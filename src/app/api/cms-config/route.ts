@@ -30,11 +30,14 @@ export async function GET(request: Request) {
       process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ??
       `${url.protocol}//${url.host}`;
 
+    const yamlBackend = config.backend as { branch?: string } | undefined;
+
     const productionConfig = {
       ...config,
       local_backend: false,
       backend: {
         name: "proxy",
+        branch: yamlBackend?.branch ?? process.env.GITHUB_BRANCH ?? "main",
         proxy_url: `${origin}/api/cms-proxy/api/v1`,
       },
     };

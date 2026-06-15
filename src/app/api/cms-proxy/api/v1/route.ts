@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminSession, getAdminCookieName } from "@/lib/admin-auth";
 import { handleCmsProxyAction } from "@/lib/cms-github-proxy";
 
+export const runtime = "nodejs";
+export const maxDuration = 60;
+
 export async function POST(request: NextRequest) {
   const session = await verifyAdminSession(
     request.cookies.get(getAdminCookieName())?.value
@@ -18,6 +21,10 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "CMS proxy request failed";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("CMS proxy error:", message, error);
+    return NextResponse.json(
+      { error: message },
+      { status: message.includes("not configured") ? 503 : 500 }
+    );
   }
 }

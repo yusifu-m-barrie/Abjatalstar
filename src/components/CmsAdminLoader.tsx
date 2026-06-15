@@ -1,26 +1,23 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { parse as parseYaml } from "yaml";
 
 declare global {
   interface Window {
     CMS?: { init: (opts: { config: Record<string, unknown> }) => void };
     CMS_MANUAL_INIT?: boolean;
+    __CMS_INIT_PROMISE__?: Promise<void>;
   }
 }
 
 type LoadState = "loading" | "ready" | "error";
 
 export default function CmsAdminLoader() {
-  const initialized = useRef(false);
   const [state, setState] = useState<LoadState>("loading");
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    if (initialized.current) return;
-    initialized.current = true;
-
     window.CMS_MANUAL_INIT = true;
 
     async function loadCms() {
@@ -28,7 +25,7 @@ export default function CmsAdminLoader() {
         const link = document.createElement("link");
         link.id = "netlify-cms-css";
         link.rel = "stylesheet";
-        link.href = "https://unpkg.com/netlify-cms@^2.10.0/dist/cms.css";
+        link.href = "https://unpkg.com/decap-cms@3.4.2/dist/decap-cms.css";
         document.head.appendChild(link);
       }
 
@@ -43,10 +40,9 @@ export default function CmsAdminLoader() {
       if (!window.CMS) {
         await new Promise<void>((resolve, reject) => {
           const script = document.createElement("script");
-          script.src =
-            "https://unpkg.com/netlify-cms@^2.10.0/dist/netlify-cms.js";
+          script.src = "https://unpkg.com/decap-cms@3.4.2/dist/decap-cms.js";
           script.onload = () => resolve();
-          script.onerror = () => reject(new Error("Netlify CMS failed to load"));
+          script.onerror = () => reject(new Error("CMS failed to load"));
           document.body.appendChild(script);
         });
       }
@@ -65,17 +61,21 @@ export default function CmsAdminLoader() {
           load_config_file: false,
         },
       });
-
-      setState("ready");
     }
 
-    loadCms().catch((error) => {
-      console.error("Netlify CMS failed to initialize:", error);
-      setErrorMessage(
-        error instanceof Error ? error.message : "Failed to load CMS"
-      );
-      setState("error");
-    });
+    if (!window.__CMS_INIT_PROMISE__) {
+      window.__CMS_INIT_PROMISE__ = loadCms();
+    }
+
+    window.__CMS_INIT_PROMISE__
+      .then(() => setState("ready"))
+      .catch((error) => {
+        console.error("CMS failed to initialize:", error);
+        setErrorMessage(
+          error instanceof Error ? error.message : "Failed to load CMS"
+        );
+        setState("error");
+      });
   }, []);
 
   if (state === "error") {

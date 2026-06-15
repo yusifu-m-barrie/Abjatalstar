@@ -3,7 +3,7 @@ import { Octokit } from "@octokit/rest";
 
 type CmsAction = {
   action: string;
-  params: Record<string, unknown>;
+  params?: Record<string, unknown>;
 };
 
 type DataFile = {
@@ -18,6 +18,8 @@ type Asset = {
   content: string;
   encoding: "base64";
 };
+
+type FileRef = { path: string; label?: string };
 
 function getRepoConfig() {
   const repo = process.env.GITHUB_REPO ?? "yusifu-m-barrie/Abjatalstar";
@@ -41,12 +43,108 @@ function fileId(content: string) {
 }
 
 function normalizePath(path: string) {
-  return path.replace(/\\/g, "/");
+  return path.replace(/\\/g, "/").replace(/^\/+/, "");
+}
+
+function normalizeDataFile(item: unknown): DataFile | null {
+  if (!item || typeof item !== "object") return null;
+
+  const record = item as Record<string, unknown>;
+  const nestedFile = record.file as { path?: string } | undefined;
+
+  const path =
+    typeof record.path === "string"
+      ? record.path
+      : typeof nestedFile?.path === "string"
+        ? nestedFile.path
+        : typeof record.file === "string"
+          ? record.file
+          : "";
+
+  let raw = record.raw ?? record.data ?? record.content ?? record.string;
+  if (raw !== null && typeof raw === "object") {
+    raw = JSON.stringify(raw, null, 2);
+  }
+
+  if (typeof raw !== "string" || !path) {
+    return null;
+  }
+
+  const slug =
+    typeof record.slug === "string"
+      ? record.slug
+      : path.split("/").pop() ?? path;
+
+  return {
+    path: normalizePath(path),
+    raw,
+    slug,
+    newPath:
+      typeof record.newPath === "string"
+        ? normalizePath(record.newPath)
+        : undefined,
+  };
+}
+
+function extractDataFiles(params: Record<string, unknown>): DataFile[] {
+  const candidates: unknown[] = [];
+
+  if (Array.isArray(params.dataFiles)) {
+    candidates.push(...params.dataFiles.filter(Boolean));
+  } else if (params.dataFiles) {
+    candidates.push(params.dataFiles);
+  } else if (params.entry) {
+    candidates.push(params.entry);
+  }
+
+  return candidates
+    .map((item) => normalizeDataFile(item))
+    .filter((file): file is DataFile => file !== null);
+}
+
+function extractFileRefs(params: Record<string, unknown>): FileRef[] {
+  if (!Array.isArray(params.files)) return [];
+
+  return params.files
+    .filter(
+      (file): file is FileRef =>
+        Boolean(
+          file &&
+            typeof file === "object" &&
+            typeof (file as FileRef).path === "string"
+        )
+    )
+    .map((file) => ({
+      path: normalizePath(file.path),
+      label: file.label ?? file.path,
+    }));
+}
+
+function extractAssets(params: Record<string, unknown>): Asset[] {
+  if (!Array.isArray(params.assets)) return [];
+
+  return params.assets
+    .filter(
+      (asset): asset is Asset =>
+        Boolean(
+          asset &&
+            typeof asset === "object" &&
+            typeof (asset as Asset).path === "string" &&
+            typeof (asset as Asset).content === "string"
+        )
+    )
+    .map((asset) => ({
+      path: normalizePath(asset.path),
+      content: asset.content,
+      encoding: "base64",
+    }));
 }
 
 async function readRepoFile(octokit: Octokit, path: string) {
   const { owner, repo, branch } = getRepoConfig();
   const normalized = normalizePath(path);
+
+  if (!normalized) return null;
 
   try {
     const { data } = await octokit.repos.getContent({
@@ -130,28 +228,31 @@ async function listMediaFiles(octokit: Octokit, mediaFolder: string) {
 
     if (!Array.isArray(data)) return [];
 
-    return Promise.all(
+    const results = await Promise.all(
       data
-        .filter((item) => item.type === "file")
+        .filter((item) => item.type === "file" && typeof item.path === "string")
         .map(async (item) => {
           const file = await readRepoFile(octokit, item.path);
           if (!file) return null;
-          const content = Buffer.from(file.data, "utf8").toString("base64");
+
           return {
             id: file.file.id,
             name: item.name,
             path: normalizePath(item.path),
-            content,
+            content: Buffer.from(file.data, "utf8").toString("base64"),
             encoding: "base64" as const,
           };
         })
-    ).then((items) => items.filter(Boolean));
+    );
+
+    return results.filter(Boolean);
   } catch {
     return [];
   }
 }
 
 export async function handleCmsProxyAction(body: CmsAction) {
+  const params = body.params ?? {};
   const octokit = new Octokit({ auth: getRepoConfig().token });
   const { owner, repo, branch } = getRepoConfig();
 
@@ -164,25 +265,29 @@ export async function handleCmsProxyAction(body: CmsAction) {
       };
 
     case "entriesByFiles": {
-      const files = (body.params.files ?? []) as Array<{ path: string; label?: string }>;
+      const files = extractFileRefs(params);
+      if (files.length === 0) {
+        throw new Error("entriesByFiles requires at least one file path");
+      }
       const entries = await Promise.all(
         files.map(async (file) => {
           const entry = await readRepoFile(octokit, file.path);
           if (!entry) {
             return {
-              data: null,
+              data: "",
               file: {
-                path: normalizePath(file.path),
-                label: file.label ?? file.path,
+                path: file.path,
+                label: file.label,
                 id: null,
               },
             };
           }
+
           return {
             data: entry.data,
             file: {
               path: entry.file.path,
-              label: file.label ?? file.path,
+              label: file.label,
               id: entry.file.id,
             },
           };
@@ -192,39 +297,41 @@ export async function handleCmsProxyAction(body: CmsAction) {
     }
 
     case "getEntry": {
-      const path = String(body.params.path ?? "");
+      const path = normalizePath(String(params.path ?? ""));
+      if (!path) {
+        throw new Error("getEntry requires a file path");
+      }
+
       const entry = await readRepoFile(octokit, path);
       if (!entry) {
         throw new Error(`File not found: ${path}`);
       }
-      return entry;
+
+      return {
+        data: entry.data,
+        file: entry.file,
+      };
     }
 
     case "persistEntry": {
-      const params = body.params;
-      const dataFiles: DataFile[] = Array.isArray(params.dataFiles)
-        ? (params.dataFiles as DataFile[]).filter(
-            (file): file is DataFile =>
-              Boolean(file && typeof file.path === "string" && typeof file.raw === "string")
-          )
-        : params.entry &&
-            typeof (params.entry as DataFile).path === "string" &&
-            typeof (params.entry as DataFile).raw === "string"
-          ? [params.entry as DataFile]
-          : [];
+      const dataFiles = extractDataFiles(params);
 
       if (dataFiles.length === 0) {
-        throw new Error("No valid files to persist");
+        const preview = JSON.stringify({
+          dataFiles: params.dataFiles,
+          entry: params.entry,
+        }).slice(0, 800);
+        console.error("persistEntry: invalid payload", preview);
+        throw new Error(
+          "No valid files to persist. Each file needs a path and content."
+        );
       }
 
-      const assets = ((params.assets ?? []) as Asset[]).filter(
-        (asset): asset is Asset =>
-          Boolean(asset && typeof asset.path === "string" && asset.content)
-      );
+      const assets = extractAssets(params);
       const options = (params.options ?? {}) as { commitMessage?: string };
       const message =
         options.commitMessage ??
-        `CMS: Update ${dataFiles.map((f) => f.path).join(", ")}`;
+        `CMS: Update ${dataFiles.map((file) => file.path).join(", ")}`;
 
       for (const file of dataFiles) {
         await writeRepoFile(octokit, file.path, file.raw, message);
@@ -239,7 +346,7 @@ export async function handleCmsProxyAction(body: CmsAction) {
         await octokit.repos.createOrUpdateFileContents({
           owner,
           repo,
-          path: normalizePath(asset.path),
+          path: asset.path,
           message,
           content: asset.content,
           branch,
@@ -251,12 +358,16 @@ export async function handleCmsProxyAction(body: CmsAction) {
     }
 
     case "getMedia":
-      return listMediaFiles(octokit, String(body.params.mediaFolder ?? "public/uploads"));
+      return listMediaFiles(
+        octokit,
+        String(params.mediaFolder ?? "public/uploads")
+      );
 
     case "getMediaFile": {
-      const path = String(body.params.path ?? "");
+      const path = normalizePath(String(params.path ?? ""));
       const file = await readRepoFile(octokit, path);
       if (!file) throw new Error(`Media not found: ${path}`);
+
       return {
         id: file.file.id,
         content: Buffer.from(file.data, "utf8").toString("base64"),
@@ -267,35 +378,48 @@ export async function handleCmsProxyAction(body: CmsAction) {
     }
 
     case "persistMedia": {
-      const asset = body.params.asset as Asset;
-      const options = (body.params.options ?? {}) as { commitMessage?: string };
+      const assetParam = params.asset;
+      if (
+        !assetParam ||
+        typeof assetParam !== "object" ||
+        typeof (assetParam as Asset).path !== "string" ||
+        typeof (assetParam as Asset).content !== "string"
+      ) {
+        throw new Error("persistMedia requires a valid asset");
+      }
+
+      const asset: Asset = {
+        path: normalizePath((assetParam as Asset).path),
+        content: (assetParam as Asset).content,
+        encoding: "base64",
+      };
+
+      const options = (params.options ?? {}) as { commitMessage?: string };
       const message = options.commitMessage ?? `CMS: Upload ${asset.path}`;
       const existing = await readRepoFile(octokit, asset.path);
 
-      const { data } = await octokit.repos.createOrUpdateFileContents({
+      await octokit.repos.createOrUpdateFileContents({
         owner,
         repo,
-        path: normalizePath(asset.path),
+        path: asset.path,
         message,
         content: asset.content,
         branch,
         ...(existing?.sha ? { sha: existing.sha } : {}),
       });
 
-      const content = asset.content;
       return {
-        id: fileId(Buffer.from(content, "base64").toString("binary")),
-        content,
+        id: fileId(asset.content),
+        content: asset.content,
         encoding: "base64",
-        path: normalizePath(asset.path),
+        path: asset.path,
         name: asset.path.split("/").pop(),
-        sha: data.content?.sha,
       };
     }
 
     case "deleteFile": {
-      const path = String(body.params.path ?? "");
-      const options = (body.params.options ?? {}) as { commitMessage?: string };
+      const path = normalizePath(String(params.path ?? ""));
+      const options = (params.options ?? {}) as { commitMessage?: string };
       await deleteRepoFile(
         octokit,
         path,
@@ -305,9 +429,11 @@ export async function handleCmsProxyAction(body: CmsAction) {
     }
 
     case "deleteFiles": {
-      const paths = (body.params.paths ?? []) as string[];
-      const options = (body.params.options ?? {}) as { commitMessage?: string };
-      const message = options.commitMessage ?? `CMS: Delete files`;
+      const paths = Array.isArray(params.paths)
+        ? params.paths.filter((path): path is string => typeof path === "string")
+        : [];
+      const options = (params.options ?? {}) as { commitMessage?: string };
+      const message = options.commitMessage ?? "CMS: Delete files";
       await Promise.all(paths.map((path) => deleteRepoFile(octokit, path, message)));
       return { message: `deleted files ${paths.join(", ")}` };
     }
