@@ -2,10 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { parse as parseYaml } from "yaml";
+import { registerSecuredProxyBackend } from "@/lib/cms-secured-proxy-backend";
 
 declare global {
   interface Window {
-    CMS?: { init: (opts: { config: Record<string, unknown> }) => void };
+    CMS?: {
+      init: (opts: { config: Record<string, unknown> }) => void;
+      registerBackend?: Parameters<typeof registerSecuredProxyBackend>[0]["registerBackend"];
+    };
     CMS_MANUAL_INIT?: boolean;
     __CMS_INIT_PROMISE__?: Promise<void>;
   }
@@ -78,6 +82,10 @@ export default function CmsAdminLoader() {
     window.CMS_MANUAL_INIT = true;
 
     async function loadCms() {
+      if (!document.getElementById("nc-root")) {
+        throw new Error("CMS mount point is missing.");
+      }
+
       loadStylesheet("decap-cms-css", CMS_ASSETS.stylesheet);
 
       if (!document.getElementById("cms-theme-css")) {
@@ -90,7 +98,17 @@ export default function CmsAdminLoader() {
 
       await loadScript(CMS_ASSETS.script);
 
-      const response = await fetch("/api/cms-config");
+      if (!window.CMS) {
+        throw new Error("CMS script loaded but did not initialize.");
+      }
+
+      if (window.CMS.registerBackend) {
+        registerSecuredProxyBackend({
+          registerBackend: window.CMS.registerBackend,
+        });
+      }
+
+      const response = await fetch("/api/cms-config", { credentials: "include" });
       if (!response.ok) {
         throw new Error(`Config load failed: ${response.status}`);
       }
@@ -98,7 +116,7 @@ export default function CmsAdminLoader() {
       const configText = await response.text();
       const config = parseYaml(configText) as Record<string, unknown>;
 
-      window.CMS!.init({
+      window.CMS.init({
         config: {
           ...config,
           load_config_file: false,
@@ -122,23 +140,30 @@ export default function CmsAdminLoader() {
       });
   }, []);
 
-  if (state === "error") {
-    return (
-      <div className="cms-loading">
-        <p className="font-semibold text-red-600">Could not load editor</p>
-        <p className="text-sm">{errorMessage}</p>
-      </div>
-    );
-  }
+  return (
+    <div className="relative min-h-[calc(100dvh-3.5rem)] flex-1">
+      <div id="nc-root" className="min-h-[calc(100dvh-3.5rem)]" />
 
-  if (state === "loading") {
-    return (
-      <div className="cms-loading">
-        <div className="cms-loading-spinner" aria-hidden />
-        <p>Loading content editor...</p>
-      </div>
-    );
-  }
+      {state === "loading" ? (
+        <div className="cms-loading absolute inset-0 z-10 bg-slate-50">
+          <div className="cms-loading-spinner" aria-hidden />
+          <p>Loading content editor...</p>
+        </div>
+      ) : null}
 
-  return null;
+      {state === "error" ? (
+        <div className="cms-loading absolute inset-0 z-10 bg-slate-50">
+          <p className="font-semibold text-red-600">Could not load editor</p>
+          <p className="text-sm">{errorMessage}</p>
+          <button
+            type="button"
+            className="mt-4 rounded-lg bg-[#1a237e] px-4 py-2 text-sm font-semibold text-white"
+            onClick={() => window.location.reload()}
+          >
+            Try again
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
 }

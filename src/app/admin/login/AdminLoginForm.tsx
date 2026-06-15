@@ -1,10 +1,9 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
 export default function AdminLoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const nextPath = searchParams.get("next") ?? "/admin";
 
@@ -21,20 +20,21 @@ export default function AdminLoginForm() {
     try {
       const response = await fetch("/api/admin/login", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
 
+      const data = (await response.json()) as { error?: string };
+
       if (!response.ok) {
-        const data = (await response.json()) as { error?: string };
         throw new Error(data.error ?? "Login failed");
       }
 
-      router.replace(nextPath);
-      router.refresh();
+      // Full navigation ensures the session cookie is picked up reliably.
+      window.location.assign(nextPath);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
-    } finally {
       setLoading(false);
     }
   }
@@ -51,6 +51,9 @@ export default function AdminLoginForm() {
           </div>
           <h1 className="text-xl font-bold text-slate-900">Content Manager</h1>
           <p className="mt-1 text-sm text-slate-500">Abjatal Star Enterprise</p>
+          <p className="mt-2 text-xs text-slate-400">
+            Sign in with your admin email and password
+          </p>
         </div>
 
         <label className="mt-6 block text-sm font-medium text-slate-700">
@@ -62,6 +65,7 @@ export default function AdminLoginForm() {
             className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-[#1a237e]"
             required
             autoComplete="username"
+            disabled={loading}
           />
         </label>
 
@@ -74,11 +78,14 @@ export default function AdminLoginForm() {
             className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-[#1a237e]"
             required
             autoComplete="current-password"
+            disabled={loading}
           />
         </label>
 
         {error ? (
-          <p className="mt-4 text-sm text-red-600">{error}</p>
+          <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+            {error}
+          </p>
         ) : null}
 
         <button
@@ -88,6 +95,10 @@ export default function AdminLoginForm() {
         >
           {loading ? "Signing in..." : "Sign in"}
         </button>
+
+        <p className="mt-4 text-center text-xs text-slate-400">
+          No Netlify account needed — this login is managed by your site.
+        </p>
       </form>
     </div>
   );

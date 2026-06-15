@@ -16,7 +16,19 @@ export async function GET(request: Request) {
     const config = parseYaml(configText) as Record<string, unknown>;
 
     if (isLocalRequest(request)) {
-      return new NextResponse(stringifyYaml(config), {
+      const yamlBackend = config.backend as { branch?: string } | undefined;
+
+      const localConfig = {
+        ...config,
+        local_backend: true,
+        backend: {
+          name: "proxy",
+          branch: yamlBackend?.branch ?? "main",
+          proxy_url: "http://localhost:8081/api/v1",
+        },
+      };
+
+      return new NextResponse(stringifyYaml(localConfig), {
         status: 200,
         headers: {
           "Content-Type": "text/yaml; charset=utf-8",
@@ -26,9 +38,8 @@ export async function GET(request: Request) {
     }
 
     const url = new URL(request.url);
-    const origin =
-      process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ??
-      `${url.protocol}//${url.host}`;
+    // Always match the host the user is actually on (avoids www vs non-www cookie issues).
+    const origin = `${url.protocol}//${url.host}`;
 
     const yamlBackend = config.backend as { branch?: string } | undefined;
 

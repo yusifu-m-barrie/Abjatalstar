@@ -6,18 +6,20 @@ import {
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const session = await verifyAdminSession(
+    request.cookies.get(getAdminCookieName())?.value
+  );
 
   if (pathname.startsWith("/admin/login")) {
+    if (session) {
+      return NextResponse.redirect(new URL("/admin", request.url));
+    }
     return NextResponse.next();
   }
 
   if (!pathname.startsWith("/admin")) {
     return NextResponse.next();
   }
-
-  const session = await verifyAdminSession(
-    request.cookies.get(getAdminCookieName())?.value
-  );
 
   if (session) {
     return NextResponse.next();

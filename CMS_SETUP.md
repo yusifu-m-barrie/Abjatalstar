@@ -1,6 +1,8 @@
-# Content Management Guide — Netlify CMS
+# Content Management Guide — Decap CMS
 
-This website uses **[Netlify CMS](https://www.netlifycms.org/)** so you can update text, branches, services, and business info **without writing any code**.
+This website uses **[Decap CMS](https://decapcms.org/)** so you can update text, branches, services, and business info **without writing any code**.
+
+**You do not need a Netlify account** to use the admin. Login is email + password only (configured in Vercel).
 
 ---
 
