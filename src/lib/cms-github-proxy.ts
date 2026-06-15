@@ -201,13 +201,27 @@ export async function handleCmsProxyAction(body: CmsAction) {
     }
 
     case "persistEntry": {
-      const dataFiles = (body.params.dataFiles ?? body.params.entry
-        ? [body.params.entry]
-        : []) as DataFile[];
-      const assets = (body.params.assets ?? []) as Asset[];
-      const options = (body.params.options ?? {}) as {
-        commitMessage?: string;
-      };
+      const params = body.params;
+      const dataFiles: DataFile[] = Array.isArray(params.dataFiles)
+        ? (params.dataFiles as DataFile[]).filter(
+            (file): file is DataFile =>
+              Boolean(file && typeof file.path === "string" && typeof file.raw === "string")
+          )
+        : params.entry &&
+            typeof (params.entry as DataFile).path === "string" &&
+            typeof (params.entry as DataFile).raw === "string"
+          ? [params.entry as DataFile]
+          : [];
+
+      if (dataFiles.length === 0) {
+        throw new Error("No valid files to persist");
+      }
+
+      const assets = ((params.assets ?? []) as Asset[]).filter(
+        (asset): asset is Asset =>
+          Boolean(asset && typeof asset.path === "string" && asset.content)
+      );
+      const options = (params.options ?? {}) as { commitMessage?: string };
       const message =
         options.commitMessage ??
         `CMS: Update ${dataFiles.map((f) => f.path).join(", ")}`;
@@ -221,6 +235,7 @@ export async function handleCmsProxyAction(body: CmsAction) {
       }
 
       for (const asset of assets) {
+        const existing = await readRepoFile(octokit, asset.path);
         await octokit.repos.createOrUpdateFileContents({
           owner,
           repo,
@@ -228,6 +243,7 @@ export async function handleCmsProxyAction(body: CmsAction) {
           message,
           content: asset.content,
           branch,
+          ...(existing?.sha ? { sha: existing.sha } : {}),
         });
       }
 
