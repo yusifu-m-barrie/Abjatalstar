@@ -7,12 +7,6 @@ declare global {
   interface Window {
     CMS?: { init: (opts: { config: Record<string, unknown> }) => void };
     CMS_MANUAL_INIT?: boolean;
-    netlifyIdentitySettings?: { APIUrl: string };
-    netlifyIdentity?: {
-      on: (event: string, cb: (user?: unknown) => void) => void;
-      open?: (mode?: string) => void;
-      currentUser?: () => unknown;
-    };
   }
 }
 
@@ -32,46 +26,6 @@ export default function CmsAdminLoader() {
         link.rel = "stylesheet";
         link.href = "https://unpkg.com/netlify-cms@^2.10.0/dist/cms.css";
         document.head.appendChild(link);
-      }
-
-      // Vercel-hosted sites proxy Identity through /.netlify/identity (see next.config.ts)
-      window.netlifyIdentitySettings = {
-        APIUrl: `${window.location.origin}/.netlify/identity`,
-      };
-
-      if (!document.getElementById("netlify-identity")) {
-        await new Promise<void>((resolve, reject) => {
-          const script = document.createElement("script");
-          script.id = "netlify-identity";
-          script.src =
-            "https://identity.netlify.com/v1/netlify-identity-widget.js";
-          script.onload = () => {
-            const hash = window.location.hash || "";
-            if (window.netlifyIdentity) {
-              window.netlifyIdentity.on("login", () => {
-                window.location.href = "/admin";
-              });
-              if (hash.includes("invite_token")) {
-                setTimeout(() => {
-                  if (
-                    window.netlifyIdentity &&
-                    !window.netlifyIdentity.currentUser?.()
-                  ) {
-                    window.netlifyIdentity.open?.("signup");
-                  }
-                }, 300);
-              }
-            }
-            resolve();
-          };
-          script.onerror = () => reject(new Error("Identity widget failed"));
-          document.head.appendChild(script);
-        });
-      } else if (window.netlifyIdentity) {
-        const hash = window.location.hash || "";
-        if (hash.includes("invite_token")) {
-          window.netlifyIdentity.open?.("signup");
-        }
       }
 
       if (!window.CMS) {

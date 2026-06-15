@@ -46,78 +46,70 @@ Then open **http://localhost:3000/admin**
 
 ## How to Edit Content
 
-1. Open `/admin`
-2. Log in (on Netlify: use your invited email; locally: no login needed if proxy is running)
+1. Open **https://www.abjatalstar.com/admin**
+2. Sign in with your **admin email and password**
 3. Click the section you want (e.g. **Home Page**)
 4. Edit the fields
 5. Click **Publish** (top right)
-6. On Vercel, the site rebuilds automatically in 1–2 minutes
+6. Vercel rebuilds automatically in 1–2 minutes
 
 ---
 
-## Production Setup (Vercel + Netlify)
+## Production Setup (Vercel — custom admin login)
 
-The live site runs on **Vercel** (`https://www.abjatalstar.com`). CMS login uses **Netlify Identity + Git Gateway** on a linked Netlify site.
+The CMS uses a **simple email + password** (no Netlify invites required).
 
-### Step 1 — Netlify site (same GitHub repo)
+### Step 1 — GitHub Personal Access Token
 
-1. [app.netlify.com](https://app.netlify.com) → **Add new site** → **Import from Git**
-2. Connect `yusifu-m-barrie/Abjatalstar` (same repo as Vercel)
-3. Deploy once (build: `npm run build`, plugin in `netlify.toml`)
-4. Note your Netlify URL, e.g. `https://abjatalstar.netlify.app`
+1. GitHub → **Settings** → **Developer settings** → **Personal access tokens**
+2. Create a token with **repo** scope (to save CMS changes to GitHub)
+3. Copy the token
 
-### Step 2 — Enable Identity + Git Gateway
+### Step 2 — Vercel environment variables
 
-On the Netlify site:
+**Vercel → Project → Settings → Environment Variables** → add:
 
-1. **Site configuration → Identity** → **Enable Identity**
-2. **Identity → Services → Git Gateway** → **Enable**
-3. **Identity → Registration** → **Invite only**
-4. **Identity → Invite users** → invite the business owner’s email
-5. **Identity → Settings:**
-   - **Site URL:** `https://www.abjatalstar.com/invite` (invite links open account setup)
-   - Allow login from your production domain
+| Name | Value |
+|------|--------|
+| `ADMIN_EMAIL` | Admin login email |
+| `ADMIN_PASSWORD` | Admin login password |
+| `ADMIN_SESSION_SECRET` | Long random string (e.g. 32+ characters) |
+| `GITHUB_TOKEN` | Your GitHub personal access token |
+| `GITHUB_REPO` | `yusifu-m-barrie/Abjatalstar` |
+| `GITHUB_BRANCH` | `main` |
+| `NEXT_PUBLIC_SITE_URL` | `https://www.abjatalstar.com` |
 
-### Accepting an invite (first-time users)
+Redeploy Vercel after saving.
 
-1. Open the link from the Netlify invite email
-2. If you only see the homepage, go to **https://www.abjatalstar.com/invite** and add the `#invite_token=...` part from the email link to the end of the URL
-3. Or open **https://www.abjatalstar.com/admin** with the same `#invite_token=...` suffix
-4. A **Set your password** popup should appear — click **Open login** on `/invite` if it does not
-5. After setting a password, use **https://www.abjatalstar.com/admin** to edit content
+### Step 3 — Test
 
-### Step 3 — Vercel environment variable
-
-In **Vercel → Project → Settings → Environment Variables**, add:
-
-| Name | Value | Example |
-|------|--------|---------|
-| `NETLIFY_SITE_URL` | Your real Netlify site URL (must start with `https://`) | `https://abjatalstar.netlify.app` |
-| `NEXT_PUBLIC_SITE_URL` | Production domain | `https://www.abjatalstar.com` |
-
-Redeploy Vercel after saving. This proxies `/.netlify/identity` and `/.netlify/git` to Netlify so CMS works on Vercel.
-
-### Step 4 — Test
-
-1. Open `https://www.abjatalstar.com/admin`
-2. Log in with the invited email
-3. Edit content → **Publish** → Vercel rebuilds from GitHub in ~1–2 minutes
-
-**Optional:** In Netlify, disable auto-deploy if you only want Vercel to build the public site (Identity still works).
+1. Open **https://www.abjatalstar.com/admin**
+2. Sign in with `ADMIN_EMAIL` / `ADMIN_PASSWORD`
+3. Edit content → **Publish**
 
 ---
 
-## Netlify-Only Hosting (Alternative)
+## Local development
 
-If you move the whole site to Netlify, skip `NETLIFY_SITE_URL` on Vercel — Identity works automatically on the same domain.
+Create `.env.local` from `.env.example` with your admin credentials.
 
-1. Push this project to **GitHub**
-2. [netlify.com](https://netlify.com) → **Add new site** → **Import from Git**
-3. Connect your repo (build settings are in `netlify.toml`)
-4. After deploy: **Site settings → Identity** → **Enable Identity**
-5. **Identity → Services → Git Gateway** → **Enable**
-6. **Identity → Invite users** → Invite the business owner
-7. Visit `yoursite.com/admin` and log in with the invited email
+**Terminal 1:** `npm run dev`  
+**Terminal 2:** `npm run cms` (local file saving)
+
+Open **http://localhost:3000/admin** and sign in.
+
+---
+
+## Legacy: Netlify Identity (optional, not required)
+
+If you previously set up Netlify Identity, you can ignore it — the CMS now uses custom login + GitHub token instead.
+
+<details>
+<summary>Old Netlify Identity setup (archived)</summary>
+
+See git history for Netlify Identity + Git Gateway instructions.
+
+</details>
 
 ---
 
@@ -145,12 +137,12 @@ When you publish in Netlify CMS, changes are saved to these JSON files in your G
 | `/admin` shows 404 | Restart `npm run dev` |
 | **Config.yml 404 error** | Restart `npm run dev` after code updates — config is served at `/admin/config.yml` |
 | CMS loads but won't save locally | Run `npm run cms` in a second terminal |
-| Can't log in on production | Enable Netlify Identity + Git Gateway; set `NETLIFY_SITE_URL` on Vercel and redeploy |
-| **Unable to access identity settings** | Netlify Identity/Git Gateway not enabled, or `NETLIFY_SITE_URL` missing on Vercel |
+| Can't log in on production | Set `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and `ADMIN_SESSION_SECRET` on Vercel and redeploy |
+| CMS loads but won't save | Set `GITHUB_TOKEN` with **repo** scope on Vercel |
 | Changes not on website | Wait 2 min for Vercel rebuild, or hard-refresh browser |
 
 ---
 
 ## Need Help?
 
-Contact your developer to add new fields, sections, or fix Netlify Identity setup.
+Contact your developer to add new fields, sections, or update admin credentials.
