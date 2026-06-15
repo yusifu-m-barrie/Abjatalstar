@@ -75,8 +75,15 @@ On the Netlify site:
 3. **Identity → Registration** → **Invite only**
 4. **Identity → Invite users** → invite the business owner’s email
 5. **Identity → Settings:**
-   - **Site URL:** `https://www.abjatalstar.com`
+   - **Site URL:** `https://www.abjatalstar.com/admin` (invite links open the CMS login page)
    - Allow login from your production domain
+
+### Accepting an invite (first-time users)
+
+1. Open the link from the Netlify invite email (it may land on the homepage — that is OK)
+2. A **Set your password** popup should appear automatically
+3. If no popup appears, go to `https://www.abjatalstar.com/admin` and log in with the invited email
+4. After setting a password, use **https://www.abjatalstar.com/admin** to edit content
 
 ### Step 3 — Vercel environment variable
 
