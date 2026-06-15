@@ -10,6 +10,8 @@ declare global {
     netlifyIdentitySettings?: { APIUrl: string };
     netlifyIdentity?: {
       on: (event: string, cb: (user?: unknown) => void) => void;
+      open?: (mode?: string) => void;
+      currentUser?: () => unknown;
     };
   }
 }
@@ -43,10 +45,33 @@ export default function CmsAdminLoader() {
           script.id = "netlify-identity";
           script.src =
             "https://identity.netlify.com/v1/netlify-identity-widget.js";
-          script.onload = () => resolve();
+          script.onload = () => {
+            const hash = window.location.hash || "";
+            if (window.netlifyIdentity) {
+              window.netlifyIdentity.on("login", () => {
+                window.location.href = "/admin";
+              });
+              if (hash.includes("invite_token")) {
+                setTimeout(() => {
+                  if (
+                    window.netlifyIdentity &&
+                    !window.netlifyIdentity.currentUser?.()
+                  ) {
+                    window.netlifyIdentity.open?.("signup");
+                  }
+                }, 300);
+              }
+            }
+            resolve();
+          };
           script.onerror = () => reject(new Error("Identity widget failed"));
           document.head.appendChild(script);
         });
+      } else if (window.netlifyIdentity) {
+        const hash = window.location.hash || "";
+        if (hash.includes("invite_token")) {
+          window.netlifyIdentity.open?.("signup");
+        }
       }
 
       if (!window.CMS) {
@@ -74,16 +99,6 @@ export default function CmsAdminLoader() {
           load_config_file: false,
         },
       });
-
-      if (window.netlifyIdentity) {
-        window.netlifyIdentity.on("init", (user) => {
-          if (!user) {
-            window.netlifyIdentity!.on("login", () => {
-              window.location.href = "/admin";
-            });
-          }
-        });
-      }
     }
 
     loadCms().catch((error) => {
