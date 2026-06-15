@@ -12,8 +12,8 @@ local_backend: true
 media_folder: "public/uploads"
 public_folder: "/uploads"
 
-site_url: https://abjatalstar.netlify.app
-display_url: https://abjatalstar.netlify.app
+site_url: https://www.abjatalstar.com
+display_url: https://www.abjatalstar.com
 logo_url: /abjatal-star-logo.png
 
 slug:

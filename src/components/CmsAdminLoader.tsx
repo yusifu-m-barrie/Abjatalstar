@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { parse as parseYaml } from "yaml";
 
 declare global {
@@ -14,7 +14,12 @@ declare global {
 }
 
 export default function CmsAdminLoader() {
+  const initialized = useRef(false);
+
   useEffect(() => {
+    if (initialized.current) return;
+    initialized.current = true;
+
     window.CMS_MANUAL_INIT = true;
 
     async function loadCms() {
@@ -57,7 +62,12 @@ export default function CmsAdminLoader() {
       const configText = await response.text();
       const config = parseYaml(configText) as Record<string, unknown>;
 
-      window.CMS!.init({ config });
+      window.CMS!.init({
+        config: {
+          ...config,
+          load_config_file: false,
+        },
+      });
 
       if (window.netlifyIdentity) {
         window.netlifyIdentity.on("init", (user) => {

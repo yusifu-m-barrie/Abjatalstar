@@ -20,6 +20,7 @@
         })
         .then(function (text) {
           var config = jsyaml.load(text);
+          config.load_config_file = false;
           window.CMS.init({ config: config });
         })
         .catch(function (err) {

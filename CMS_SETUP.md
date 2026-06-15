@@ -6,8 +6,8 @@ This website uses **[Netlify CMS](https://www.netlifycms.org/)** so you can upda
 
 ## Access the CMS
 
-**Production (after Netlify deploy):**
-`https://your-website.com/admin`
+**Production:**
+`https://www.abjatalstar.com/admin`
 
 **Local development:**
 `http://localhost:3000/admin`
