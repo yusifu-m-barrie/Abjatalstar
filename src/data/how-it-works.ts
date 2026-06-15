@@ -1,0 +1,80 @@
+import {
+  MapPinned,
+  FileText,
+  CreditCard,
+  Banknote,
+  IdCard,
+  Hash,
+  ShieldCheck,
+  Wallet,
+  type LucideIcon,
+} from "lucide-react";
+
+export interface Step {
+  number: number;
+  title: string;
+  description: string;
+  icon: LucideIcon;
+}
+
+export const SENDING_STEPS: Step[] = [
+  {
+    number: 1,
+    title: "Visit Any Branch",
+    description:
+      "Walk into any Abjatal Star branch or authorized agent location near you during business hours.",
+    icon: MapPinned,
+  },
+  {
+    number: 2,
+    title: "Provide Receiver Details",
+    description:
+      "Share the recipient's full name, destination country, and contact information with our agent.",
+    icon: FileText,
+  },
+  {
+    number: 3,
+    title: "Make Payment",
+    description:
+      "Pay the transfer amount plus applicable fees. You will receive a receipt and tracking reference number.",
+    icon: CreditCard,
+  },
+  {
+    number: 4,
+    title: "Receiver Collects Money",
+    description:
+      "Your recipient collects the funds at their nearest payout location using the reference number.",
+    icon: Banknote,
+  },
+];
+
+export const RECEIVING_STEPS: Step[] = [
+  {
+    number: 1,
+    title: "Bring Valid ID",
+    description:
+      "Visit your nearest Abjatal Star branch with a valid government-issued photo identification.",
+    icon: IdCard,
+  },
+  {
+    number: 2,
+    title: "Provide Transaction Reference",
+    description:
+      "Give the agent your money transfer control number or transaction reference from the sender.",
+    icon: Hash,
+  },
+  {
+    number: 3,
+    title: "Verification",
+    description:
+      "Our agent verifies your identity and transaction details against the sender's information.",
+    icon: ShieldCheck,
+  },
+  {
+    number: 4,
+    title: "Receive Your Cash",
+    description:
+      "Once verified, collect your money immediately. No waiting, no complications.",
+    icon: Wallet,
+  },
+];

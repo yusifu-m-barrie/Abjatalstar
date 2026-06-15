@@ -1,0 +1,24 @@
+{
+  "seo": {
+    "title": "How It Works",
+    "description": "Learn how to send and receive money through Abjatal Star. Simple steps at any of our branches nationwide."
+  },
+  "header": {
+    "badge": "Guide",
+    "title": "How It Works",
+    "subtitle": "Sending and receiving money through Abjatal Star is simple and secure. Follow these easy steps at any branch."
+  },
+  "section": {
+    "eyebrow": "Simple Process",
+    "title": "How It Works",
+    "description": "Sending and receiving money through Abjatal Star is straightforward. Follow these simple steps at any of our branches.",
+    "sendingTitle": "Sending Money",
+    "receivingTitle": "Receiving Money"
+  },
+  "cta": {
+    "title": "Ready to Get Started?",
+    "description": "Visit your nearest Abjatal Star branch with a valid ID and our friendly agents will guide you through the entire process.",
+    "primaryButton": "Find a Branch",
+    "secondaryButton": "Contact Us"
+  }
+}

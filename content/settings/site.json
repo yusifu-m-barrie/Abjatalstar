@@ -1,0 +1,26 @@
+{
+  "name": "Abjatal Star Enterprise",
+  "shortName": "Abjatal Star",
+  "tagline": "Remittance & Orange Money Operations — Sierra Leone",
+  "subtitle": "FX Bureau · Remittance · Orange Money",
+  "description": "Send, receive, and manage your money through trusted global remittance partners and Orange Money operations across Sierra Leone.",
+  "phone": "+232 76 000 0000",
+  "phoneDisplay": "+232 76 000 0000",
+  "whatsapp": "+232760000000",
+  "email": "info@abjatalstar.com",
+  "address": "Sierra Leone",
+  "founded": "2015",
+  "license": "Licensed Remittance, FX Bureau & Orange Money Agent",
+  "logo": "/abjatal-star-logo.png",
+  "hours": {
+    "weekdays": "Monday – Friday: 8:00 AM – 6:00 PM",
+    "saturday": "Saturday: 9:00 AM – 4:00 PM",
+    "sunday": "Sunday: Closed",
+    "summary": "Mon–Fri 8AM–6PM · Sat 9AM–4PM"
+  },
+  "social": {
+    "facebook": "https://facebook.com",
+    "twitter": "https://twitter.com",
+    "instagram": "https://instagram.com"
+  }
+}

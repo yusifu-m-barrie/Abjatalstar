@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>Abjatal Star — Netlify CMS</title>
+    <link rel="stylesheet" href="https://unpkg.com/netlify-cms@^2.10.0/dist/cms.css" />
+    <script>window.CMS_MANUAL_INIT = true;</script>
+    <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+  </head>
+  <body>
+    <script src="https://unpkg.com/netlify-cms@^2.10.0/dist/netlify-cms.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+    <script>
+      fetch("/api/cms-config")
+        .then(function (res) {
+          if (!res.ok) throw new Error("Config failed: " + res.status);
+          return res.text();
+        })
+        .then(function (text) {
+          var config = jsyaml.load(text);
+          window.CMS.init({ config: config });
+        })
+        .catch(function (err) {
+          console.error(err);
+          document.body.innerHTML =
+            "<p style='padding:2rem;font-family:sans-serif'>Failed to load CMS. Make sure <code>npm run dev</code> is running.</p>";
+        });
+
+      if (window.netlifyIdentity) {
+        window.netlifyIdentity.on("init", function (user) {
+          if (!user) {
+            window.netlifyIdentity.on("login", function () {
+              document.location.href = "/admin/";
+            });
+          }
+        });
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,39 @@
+{
+  "seo": {
+    "title": "About Us",
+    "description": "Learn about Abjatal Star Enterprise — a trusted remittance and mobile money provider serving communities across Sierra Leone since 2015."
+  },
+  "header": {
+    "badge": "Our Story",
+    "title": "About Abjatal Star Enterprise",
+    "subtitle": "Remittance & Orange Money Operations — Sierra Leone — trusted FX bureau and remittance services since 2015."
+  },
+  "whoWeAre": {
+    "title": "Who We Are",
+    "paragraphs": [
+      "Abjatal Star Enterprise is a licensed FX bureau, remittance agent, and Orange Money operator serving individuals, families, and businesses across Sierra Leone. Since 2015, we have built a reputation for reliable, secure, and customer-friendly financial services.",
+      "Through partnerships with global leaders like Western Union, MoneyGram, and Ria — alongside local providers such as Orange Money and Afrimoney — we offer a complete suite of money transfer and payment solutions under one roof.",
+      "Our mission is simple: make sending and receiving money as easy, affordable, and secure as possible for every Sierra Leonean, wherever they are."
+    ]
+  },
+  "mission": {
+    "title": "Our Mission",
+    "text": "To empower communities with accessible, secure, and affordable financial services that connect people to opportunities at home and abroad."
+  },
+  "vision": {
+    "title": "Our Vision",
+    "text": "To become Sierra Leone's most trusted and widely accessible remittance and mobile money network."
+  },
+  "values": {
+    "title": "Our Core Values",
+    "description": "These principles guide every decision we make and every interaction we have with our customers.",
+    "items": [
+      { "title": "Integrity", "description": "We operate with honesty and transparency in every transaction, ensuring our customers always know exactly what to expect." },
+      { "title": "Accessibility", "description": "Financial services should be within reach of everyone. Our growing branch network brings remittance services closer to your community." },
+      { "title": "Excellence", "description": "From customer service to transaction processing, we strive for excellence in everything we do." },
+      { "title": "Community", "description": "We are deeply rooted in the communities we serve, supporting local economies and helping families stay connected." }
+    ]
+  },
+  "showTrustBadges": true,
+  "showWhyChooseUs": true
+}
