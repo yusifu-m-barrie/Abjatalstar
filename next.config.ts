@@ -2,6 +2,10 @@ import type { NextConfig } from "next";
 
 /** Netlify site URL (e.g. https://abjatalstar.netlify.app) — required for CMS on Vercel */
 const netlifySiteUrl = process.env.NETLIFY_SITE_URL?.replace(/\/$/, "");
+const hasValidNetlifySiteUrl =
+  !!netlifySiteUrl &&
+  /^https?:\/\//.test(netlifySiteUrl) &&
+  !netlifySiteUrl.includes("NETLIFY_SITE_URL");
 
 const nextConfig: NextConfig = {
   async rewrites() {
@@ -17,7 +21,7 @@ const nextConfig: NextConfig = {
     ];
 
     // Proxy Netlify Identity + Git Gateway when the site is hosted on Vercel
-    if (netlifySiteUrl) {
+    if (hasValidNetlifySiteUrl && netlifySiteUrl) {
       rewrites.push(
         {
           source: "/.netlify/identity/:path*",

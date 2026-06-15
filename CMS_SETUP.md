@@ -84,7 +84,7 @@ In **Vercel → Project → Settings → Environment Variables**, add:
 
 | Name | Value | Example |
 |------|--------|---------|
-| `NETLIFY_SITE_URL` | Your Netlify site URL (no trailing slash) | `https://abjatalstar.netlify.app` |
+| `NETLIFY_SITE_URL` | Your real Netlify site URL (must start with `https://`) | `https://abjatalstar.netlify.app` |
 | `NEXT_PUBLIC_SITE_URL` | Production domain | `https://www.abjatalstar.com` |
 
 Redeploy Vercel after saving. This proxies `/.netlify/identity` and `/.netlify/git` to Netlify so CMS works on Vercel.
