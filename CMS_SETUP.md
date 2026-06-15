@@ -51,11 +51,57 @@ Then open **http://localhost:3000/admin**
 3. Click the section you want (e.g. **Home Page**)
 4. Edit the fields
 5. Click **Publish** (top right)
-6. On Netlify, the site rebuilds automatically in 1–2 minutes
+6. On Vercel, the site rebuilds automatically in 1–2 minutes
 
 ---
 
-## Netlify Production Setup (One-Time)
+## Production Setup (Vercel + Netlify)
+
+The live site runs on **Vercel** (`https://www.abjatalstar.com`). CMS login uses **Netlify Identity + Git Gateway** on a linked Netlify site.
+
+### Step 1 — Netlify site (same GitHub repo)
+
+1. [app.netlify.com](https://app.netlify.com) → **Add new site** → **Import from Git**
+2. Connect `yusifu-m-barrie/Abjatalstar` (same repo as Vercel)
+3. Deploy once (build: `npm run build`, plugin in `netlify.toml`)
+4. Note your Netlify URL, e.g. `https://abjatalstar.netlify.app`
+
+### Step 2 — Enable Identity + Git Gateway
+
+On the Netlify site:
+
+1. **Site configuration → Identity** → **Enable Identity**
+2. **Identity → Services → Git Gateway** → **Enable**
+3. **Identity → Registration** → **Invite only**
+4. **Identity → Invite users** → invite the business owner’s email
+5. **Identity → Settings:**
+   - **Site URL:** `https://www.abjatalstar.com`
+   - Allow login from your production domain
+
+### Step 3 — Vercel environment variable
+
+In **Vercel → Project → Settings → Environment Variables**, add:
+
+| Name | Value | Example |
+|------|--------|---------|
+| `NETLIFY_SITE_URL` | Your Netlify site URL (no trailing slash) | `https://abjatalstar.netlify.app` |
+| `NEXT_PUBLIC_SITE_URL` | Production domain | `https://www.abjatalstar.com` |
+
+Redeploy Vercel after saving. This proxies `/.netlify/identity` and `/.netlify/git` to Netlify so CMS works on Vercel.
+
+### Step 4 — Test
+
+1. Open `https://www.abjatalstar.com/admin`
+2. Log in with the invited email
+3. Edit content → **Publish** → Vercel rebuilds from GitHub in ~1–2 minutes
+
+**Optional:** In Netlify, disable auto-deploy if you only want Vercel to build the public site (Identity still works).
+
+---
+
+## Netlify-Only Hosting (Alternative)
+
+If you move the whole site to Netlify, skip `NETLIFY_SITE_URL` on Vercel — Identity works automatically on the same domain.
 
 1. Push this project to **GitHub**
 2. [netlify.com](https://netlify.com) → **Add new site** → **Import from Git**
@@ -91,8 +137,9 @@ When you publish in Netlify CMS, changes are saved to these JSON files in your G
 | `/admin` shows 404 | Restart `npm run dev` |
 | **Config.yml 404 error** | Restart `npm run dev` after code updates — config is served at `/admin/config.yml` |
 | CMS loads but won't save locally | Run `npm run cms` in a second terminal |
-| Can't log in on production | Enable Netlify Identity + Git Gateway |
-| Changes not on website | Wait 2 min for Netlify rebuild, or hard-refresh browser |
+| Can't log in on production | Enable Netlify Identity + Git Gateway; set `NETLIFY_SITE_URL` on Vercel and redeploy |
+| **Unable to access identity settings** | Netlify Identity/Git Gateway not enabled, or `NETLIFY_SITE_URL` missing on Vercel |
+| Changes not on website | Wait 2 min for Vercel rebuild, or hard-refresh browser |
 
 ---
 

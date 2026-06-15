@@ -7,6 +7,7 @@ declare global {
   interface Window {
     CMS?: { init: (opts: { config: Record<string, unknown> }) => void };
     CMS_MANUAL_INIT?: boolean;
+    netlifyIdentitySettings?: { APIUrl: string };
     netlifyIdentity?: {
       on: (event: string, cb: (user?: unknown) => void) => void;
     };
@@ -30,6 +31,11 @@ export default function CmsAdminLoader() {
         link.href = "https://unpkg.com/netlify-cms@^2.10.0/dist/cms.css";
         document.head.appendChild(link);
       }
+
+      // Vercel-hosted sites proxy Identity through /.netlify/identity (see next.config.ts)
+      window.netlifyIdentitySettings = {
+        APIUrl: `${window.location.origin}/.netlify/identity`,
+      };
 
       if (!document.getElementById("netlify-identity")) {
         await new Promise<void>((resolve, reject) => {

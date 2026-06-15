@@ -1,8 +1,11 @@
 import type { NextConfig } from "next";
 
+/** Netlify site URL (e.g. https://abjatalstar.netlify.app) — required for CMS on Vercel */
+const netlifySiteUrl = process.env.NETLIFY_SITE_URL?.replace(/\/$/, "");
+
 const nextConfig: NextConfig = {
   async rewrites() {
-    return [
+    const rewrites = [
       {
         source: "/config.yml",
         destination: "/api/cms-config",
@@ -12,6 +15,22 @@ const nextConfig: NextConfig = {
         destination: "/api/cms-config",
       },
     ];
+
+    // Proxy Netlify Identity + Git Gateway when the site is hosted on Vercel
+    if (netlifySiteUrl) {
+      rewrites.push(
+        {
+          source: "/.netlify/identity/:path*",
+          destination: `${netlifySiteUrl}/.netlify/identity/:path*`,
+        },
+        {
+          source: "/.netlify/git/:path*",
+          destination: `${netlifySiteUrl}/.netlify/git/:path*`,
+        }
+      );
+    }
+
+    return rewrites;
   },
   async headers() {
     return [
