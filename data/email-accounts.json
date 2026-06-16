@@ -1,0 +1,12 @@
+[
+  {
+    "id": "seed-info",
+    "fullName": "Abjatal Star Info Desk",
+    "email": "info@abjatalstar.com",
+    "role": "General Inquiries",
+    "department": "Operations",
+    "status": "active",
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "notes": "Primary public contact mailbox — already created in HostGator cPanel."
+  }
+]

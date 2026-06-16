@@ -22,6 +22,7 @@ import {
   servicesPage,
   siteSettings,
 } from "./documents";
+import { staffEmailAccount } from "./staffEmailAccount";
 
 export const schemaTypes = [
   seo,
@@ -44,4 +45,5 @@ export const schemaTypes = [
   agentsPage,
   aboutPage,
   contactPage,
+  staffEmailAccount,
 ];
