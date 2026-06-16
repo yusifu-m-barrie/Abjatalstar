@@ -1,4 +1,4 @@
-import { client, isSanityConfigured } from "@/sanity/client";
+import { client, isSanityConfigured, sanityRevalidate } from "@/sanity/client";
 import { getImageUrl } from "@/sanity/image";
 import {
   aboutPageQuery,
@@ -62,7 +62,9 @@ type SanitySiteSettings = Omit<SiteSettings, "logo"> & {
 async function fetchSanity<T>(query: string): Promise<T | null> {
   if (!isSanityConfigured) return null;
   try {
-    return await client.fetch<T | null>(query);
+    return await client.fetch<T | null>(query, {}, {
+      next: { revalidate: sanityRevalidate },
+    });
   } catch {
     return null;
   }

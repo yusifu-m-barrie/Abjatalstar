@@ -24,7 +24,10 @@ export default function RootLayout({
       <head>
         {/* Sanity Studio handles admin authentication via Sanity project members */}
       </head>
-      <body className="min-h-screen bg-white font-sans text-foreground antialiased">
+      <body
+        className="min-h-screen bg-white font-sans text-foreground antialiased"
+        suppressHydrationWarning
+      >
         {children}
       </body>
     </html>
