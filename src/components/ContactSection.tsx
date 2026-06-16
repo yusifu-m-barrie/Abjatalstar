@@ -2,7 +2,7 @@
 
 import { useState, FormEvent } from "react";
 import { motion } from "framer-motion";
-import { Mail, MapPin, Phone, Send, CheckCircle2 } from "lucide-react";
+import { Mail, MapPin, Phone, Send, CheckCircle2, Loader2, AlertCircle } from "lucide-react";
 import { useBusiness } from "@/context/SiteSettingsContext";
 import BusinessHours from "./BusinessHours";
 
@@ -36,11 +36,45 @@ export default function ContactSection({
   showHeading = true,
 }: ContactSectionProps) {
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const business = useBusiness();
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setSubmitted(true);
+    setError(null);
+    setIsSubmitting(true);
+
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+
+    try {
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullName: formData.get("fullName"),
+          phone: formData.get("phone"),
+          service: formData.get("service"),
+          message: formData.get("message"),
+          website: formData.get("website"),
+        }),
+      });
+
+      const data = (await response.json()) as { error?: string };
+
+      if (!response.ok) {
+        setError(data.error ?? "Failed to send message. Please try again.");
+        return;
+      }
+
+      form.reset();
+      setSubmitted(true);
+    } catch {
+      setError("Network error. Please check your connection and try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -140,7 +174,10 @@ export default function ContactSection({
                   <p className="mt-2 max-w-sm text-muted">{section.successMessage}</p>
                   <button
                     type="button"
-                    onClick={() => setSubmitted(false)}
+                    onClick={() => {
+                      setSubmitted(false);
+                      setError(null);
+                    }}
                     className="mt-6 text-sm font-medium text-brand-green hover:underline"
                   >
                     {section.sendAnotherText}
@@ -151,6 +188,26 @@ export default function ContactSection({
                   <h3 className="text-lg font-bold text-brand-blue">
                     {section.formTitle}
                   </h3>
+
+                  {/* Honeypot — hidden from users, traps bots */}
+                  <input
+                    type="text"
+                    name="website"
+                    tabIndex={-1}
+                    autoComplete="off"
+                    className="hidden"
+                    aria-hidden="true"
+                  />
+
+                  {error && (
+                    <div
+                      role="alert"
+                      className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+                    >
+                      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                      <span>{error}</span>
+                    </div>
+                  )}
 
                   <div className="grid gap-5 sm:grid-cols-2">
                     <div>
@@ -231,10 +288,15 @@ export default function ContactSection({
 
                   <button
                     type="submit"
-                    className="group inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-green px-6 py-3.5 text-sm font-semibold text-white transition-all hover:bg-brand-green-light hover:shadow-lg hover:shadow-brand-green/25 sm:w-auto"
+                    disabled={isSubmitting}
+                    className="group inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-green px-6 py-3.5 text-sm font-semibold text-white transition-all hover:bg-brand-green-light hover:shadow-lg hover:shadow-brand-green/25 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
                   >
-                    <Send className="h-4 w-4" />
-                    {section.submitButton}
+                    {isSubmitting ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                    {isSubmitting ? "Sending..." : section.submitButton}
                   </button>
                 </form>
               )}
