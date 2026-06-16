@@ -1,0 +1,90 @@
+{
+  "seo": {
+    "title": "Branches & Agents",
+    "description": "Find an Abjatal Star branch or agent location near you. Branches in Freetown, Makeni, Bo, Kenema, and Kono."
+  },
+  "header": {
+    "badge": "Locations",
+    "title": "Find a Branch Near You",
+    "subtitle": "Visit any Abjatal Star branch for in-person assistance with money transfers, mobile money, and bill payments."
+  },
+  "section": {
+    "eyebrow": "Our Locations",
+    "title": "Branches & Agent Locations",
+    "description": "Visit any Abjatal Star branch for in-person assistance with money transfers, mobile money, and bill payments.",
+    "bannerText": "branches across Sierra Leone — more opening soon"
+  },
+  "items": [
+    {
+      "id": "freetown",
+      "name": "Freetown Main Branch",
+      "city": "Freetown",
+      "address": "15 Siaka Stevens Street, Central Freetown",
+      "phone": "+232 76 000 0001",
+      "email": "freetown@abjatalstar.com",
+      "hours": {
+        "weekdays": "Mon–Fri: 8:00 AM – 6:00 PM",
+        "saturday": "Sat: 9:00 AM – 4:00 PM",
+        "sunday": "Sun: Closed"
+      },
+      "services": ["Western Union", "MoneyGram", "Ria", "Orange Money", "Afrimoney", "Bill Payments"],
+      "isMain": true
+    },
+    {
+      "id": "makeni",
+      "name": "Makeni Branch",
+      "city": "Makeni",
+      "address": "23 Makeni-Lunsar Highway, Makeni City Centre",
+      "phone": "+232 76 000 0002",
+      "email": "makeni@abjatalstar.com",
+      "hours": {
+        "weekdays": "Mon–Fri: 8:00 AM – 5:30 PM",
+        "saturday": "Sat: 9:00 AM – 3:00 PM",
+        "sunday": "Sun: Closed"
+      },
+      "services": ["Western Union", "MoneyGram", "Orange Money", "Afrimoney", "Local Transfers"]
+    },
+    {
+      "id": "bo",
+      "name": "Bo Branch",
+      "city": "Bo",
+      "address": "8 Bo-Kenema Road, Bo Town",
+      "phone": "+232 76 000 0003",
+      "email": "bo@abjatalstar.com",
+      "hours": {
+        "weekdays": "Mon–Fri: 8:00 AM – 5:30 PM",
+        "saturday": "Sat: 9:00 AM – 3:00 PM",
+        "sunday": "Sun: Closed"
+      },
+      "services": ["Western Union", "Ria", "Orange Money", "Afrimoney", "Bill Payments"]
+    },
+    {
+      "id": "kenema",
+      "name": "Kenema Branch",
+      "city": "Kenema",
+      "address": "12 Hangha Road, Kenema",
+      "phone": "+232 76 000 0004",
+      "email": "kenema@abjatalstar.com",
+      "hours": {
+        "weekdays": "Mon–Fri: 8:00 AM – 5:30 PM",
+        "saturday": "Sat: 9:00 AM – 3:00 PM",
+        "sunday": "Sun: Closed"
+      },
+      "services": ["MoneyGram", "Ria", "Orange Money", "Mobile Money", "Receive Money"]
+    },
+    {
+      "id": "kono",
+      "name": "Kono Branch",
+      "city": "Kono",
+      "address": "5 Koidu Town Main Street, Kono District",
+      "phone": "+232 76 000 0005",
+      "email": "kono@abjatalstar.com",
+      "hours": {
+        "weekdays": "Mon–Fri: 8:00 AM – 5:00 PM",
+        "saturday": "Sat: 9:00 AM – 2:00 PM",
+        "sunday": "Sun: Closed"
+      },
+      "services": ["Western Union", "Orange Money", "Afrimoney", "Local Transfers", "Agent Services"]
+    }
+  ]
+}

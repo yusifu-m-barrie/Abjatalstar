@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import HeroSection from "@/components/HeroSection";
 import PartnerServices from "@/components/PartnerServices";
 import ServicesSection from "@/components/ServicesSection";
@@ -13,16 +14,27 @@ import {
   getWhyChooseUs,
   getHowItWorksSteps,
   getContactPage,
+  getSiteSettings,
 } from "@/lib/content";
 
-export default function HomePage() {
-  const home = getHomePage();
-  const services = getServices();
-  const partners = getPartners();
-  const branches = getBranches();
-  const whyChooseUs = getWhyChooseUs();
-  const steps = getHowItWorksSteps();
-  const contact = getContactPage();
+export async function generateMetadata(): Promise<Metadata> {
+  const [home, site] = await Promise.all([getHomePage(), getSiteSettings()]);
+
+  return {
+    title: home.seo?.title ?? site.seo?.title ?? `${site.name} | Remittance & Orange Money`,
+    description:
+      home.seo?.description ?? site.seo?.description ?? site.description,
+  };
+}
+
+export default async function HomePage() {
+  const home = await getHomePage();
+  const services = await getServices();
+  const partners = await getPartners();
+  const branches = await getBranches();
+  const whyChooseUs = await getWhyChooseUs();
+  const steps = await getHowItWorksSteps();
+  const contact = await getContactPage();
 
   return (
     <>

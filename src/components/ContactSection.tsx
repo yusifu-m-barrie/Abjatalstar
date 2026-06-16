@@ -3,7 +3,7 @@
 import { useState, FormEvent } from "react";
 import { motion } from "framer-motion";
 import { Mail, MapPin, Phone, Send, CheckCircle2 } from "lucide-react";
-import { BUSINESS } from "@/lib/constants";
+import { useBusiness } from "@/context/SiteSettingsContext";
 import BusinessHours from "./BusinessHours";
 
 interface ContactSectionContent {
@@ -36,6 +36,7 @@ export default function ContactSection({
   showHeading = true,
 }: ContactSectionProps) {
   const [submitted, setSubmitted] = useState(false);
+  const business = useBusiness();
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -81,10 +82,10 @@ export default function ContactSection({
                   <div>
                     <p className="text-sm font-medium text-brand-blue">Phone</p>
                     <a
-                      href={`tel:${BUSINESS.phone.replace(/\s/g, "")}`}
+                      href={`tel:${business.phone.replace(/\s/g, "")}`}
                       className="text-sm text-muted hover:text-brand-green"
                     >
-                      {BUSINESS.phoneDisplay}
+                      {business.phoneDisplay}
                     </a>
                   </div>
                 </li>
@@ -95,10 +96,10 @@ export default function ContactSection({
                   <div>
                     <p className="text-sm font-medium text-brand-blue">Email</p>
                     <a
-                      href={`mailto:${BUSINESS.email}`}
+                      href={`mailto:${business.email}`}
                       className="text-sm text-muted hover:text-brand-green"
                     >
-                      {BUSINESS.email}
+                      {business.email}
                     </a>
                   </div>
                 </li>
@@ -108,7 +109,7 @@ export default function ContactSection({
                   </div>
                   <div>
                     <p className="text-sm font-medium text-brand-blue">Head Office</p>
-                    <p className="text-sm text-muted">{BUSINESS.address}</p>
+                    <p className="text-sm text-muted">{business.address}</p>
                   </div>
                 </li>
               </ul>

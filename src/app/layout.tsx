@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
-import NetlifyIdentityScript from "@/components/NetlifyIdentityScript";
 import "./globals.css";
 
 const plusJakarta = Plus_Jakarta_Sans({
@@ -23,7 +22,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${plusJakarta.variable} scroll-smooth`}>
       <head>
-        <NetlifyIdentityScript />
+        {/* Sanity Studio handles admin authentication via Sanity project members */}
       </head>
       <body className="min-h-screen bg-white font-sans text-foreground antialiased">
         {children}

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowRight, MapPin, Shield, Globe, TrendingUp } from "lucide-react";
 import type { HomePageContent } from "@/lib/content";
-import { BUSINESS } from "@/lib/constants";
+import { useBusiness } from "@/context/SiteSettingsContext";
 import TrustBadges from "./TrustBadges";
 
 interface HeroSectionProps {
@@ -13,6 +13,7 @@ interface HeroSectionProps {
 }
 
 export default function HeroSection({ content, trustBadges }: HeroSectionProps) {
+  const business = useBusiness();
   return (
     <section className="relative overflow-hidden hero-gradient">
       <div className="absolute -right-32 -top-32 h-96 w-96 rounded-full bg-brand-purple/20 blur-3xl" />
@@ -42,7 +43,7 @@ export default function HeroSection({ content, trustBadges }: HeroSectionProps) 
             </h1>
 
             <p className="mt-6 max-w-xl text-lg leading-relaxed text-muted">
-              {BUSINESS.description}
+              {business.description}
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">

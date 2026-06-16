@@ -1,7 +1,9 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
-import { BUSINESS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { useBusiness } from "@/context/SiteSettingsContext";
 
 interface LogoProps {
   variant?: "navbar" | "footer";
@@ -9,6 +11,7 @@ interface LogoProps {
 }
 
 export default function Logo({ variant = "navbar", className }: LogoProps) {
+  const business = useBusiness();
   return (
     <Link
       href="/"
@@ -23,8 +26,8 @@ export default function Logo({ variant = "navbar", className }: LogoProps) {
         )}
       >
         <Image
-          src={BUSINESS.logo}
-          alt={`${BUSINESS.name} logo`}
+          src={business.logo}
+          alt={`${business.name} logo`}
           width={320}
           height={140}
           priority

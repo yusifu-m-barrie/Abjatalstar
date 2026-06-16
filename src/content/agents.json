@@ -1,0 +1,54 @@
+{
+  "header": {
+    "badge": "Agent Network",
+    "title": "Authorized Mobile Money Agents",
+    "subtitle": "Find authorized Orange Money and Afrimoney agents across Sierra Leone."
+  },
+  "items": [
+    {
+      "id": "agent-freetown-central",
+      "name": "Central Freetown Agent",
+      "city": "Freetown",
+      "location": "15 Siaka Stevens Street",
+      "phone": "+232 76 000 0001",
+      "services": ["Orange Money", "Afrimoney", "Cash-In", "Cash-Out"],
+      "isActive": true
+    },
+    {
+      "id": "agent-makeni",
+      "name": "Makeni Town Agent",
+      "city": "Makeni",
+      "location": "23 Makeni-Lunsar Highway",
+      "phone": "+232 76 000 0002",
+      "services": ["Orange Money", "Afrimoney"],
+      "isActive": true
+    },
+    {
+      "id": "agent-bo",
+      "name": "Bo Town Agent",
+      "city": "Bo",
+      "location": "8 Bo-Kenema Road",
+      "phone": "+232 76 000 0003",
+      "services": ["Orange Money", "Bill Payments"],
+      "isActive": true
+    },
+    {
+      "id": "agent-kenema",
+      "name": "Kenema Agent",
+      "city": "Kenema",
+      "location": "12 Hangha Road",
+      "phone": "+232 76 000 0004",
+      "services": ["Orange Money", "Mobile Money"],
+      "isActive": true
+    },
+    {
+      "id": "agent-kono",
+      "name": "Kono District Agent",
+      "city": "Kono",
+      "location": "5 Koidu Town Main Street",
+      "phone": "+232 76 000 0005",
+      "services": ["Orange Money", "Afrimoney", "Local Transfers"],
+      "isActive": true
+    }
+  ]
+}

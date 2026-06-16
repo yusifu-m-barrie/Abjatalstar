@@ -3,16 +3,16 @@ import PageHeader from "@/components/PageHeader";
 import ContactSection from "@/components/ContactSection";
 import { getContactPage } from "@/lib/content";
 
-export function generateMetadata(): Metadata {
-  const page = getContactPage();
+export async function generateMetadata(): Promise<Metadata> {
+  const page = await getContactPage();
   return {
     title: page.seo.title,
     description: page.seo.description,
   };
 }
 
-export default function ContactPage() {
-  const page = getContactPage();
+export default async function ContactPage() {
+  const page = await getContactPage();
 
   return (
     <>

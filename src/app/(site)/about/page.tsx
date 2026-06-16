@@ -4,18 +4,18 @@ import TrustBadges from "@/components/TrustBadges";
 import WhyChooseUs from "@/components/WhyChooseUs";
 import { getAboutPage, getHomePage, getWhyChooseUs } from "@/lib/content";
 
-export function generateMetadata(): Metadata {
-  const page = getAboutPage();
+export async function generateMetadata(): Promise<Metadata> {
+  const page = await getAboutPage();
   return {
     title: page.seo.title,
     description: page.seo.description,
   };
 }
 
-export default function AboutPage() {
-  const page = getAboutPage();
-  const home = getHomePage();
-  const whyChooseUs = getWhyChooseUs();
+export default async function AboutPage() {
+  const page = await getAboutPage();
+  const home = await getHomePage();
+  const whyChooseUs = await getWhyChooseUs();
 
   return (
     <>

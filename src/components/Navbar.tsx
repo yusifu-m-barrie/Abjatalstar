@@ -6,14 +6,15 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, Phone } from "lucide-react";
 import { NAV_LINKS } from "@/data/navigation";
-import { BUSINESS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import Logo from "./Logo";
+import { useBusiness } from "@/context/SiteSettingsContext";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
+  const business = useBusiness();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -34,14 +35,14 @@ export default function Navbar() {
         <div className="container-custom flex items-center justify-between px-4 py-2 text-sm sm:px-6 lg:px-8">
           <div className="flex items-center gap-6">
             <a
-              href={`tel:${BUSINESS.phone.replace(/\s/g, "")}`}
+              href={`tel:${business.phone.replace(/\s/g, "")}`}
               className="flex items-center gap-2 transition-opacity hover:opacity-80"
             >
               <Phone className="h-3.5 w-3.5" />
-              {BUSINESS.phoneDisplay}
+              {business.phoneDisplay}
             </a>
             <span className="text-white/40">|</span>
-            <span className="text-white/80">{BUSINESS.tagline}</span>
+            <span className="text-white/80">{business.tagline}</span>
           </div>
           <Link
             href="/contact"

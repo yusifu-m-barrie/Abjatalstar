@@ -5,17 +5,17 @@ import PageHeader from "@/components/PageHeader";
 import HowItWorks from "@/components/HowItWorks";
 import { getHowItWorksPage, getHowItWorksSteps } from "@/lib/content";
 
-export function generateMetadata(): Metadata {
-  const page = getHowItWorksPage();
+export async function generateMetadata(): Promise<Metadata> {
+  const page = await getHowItWorksPage();
   return {
     title: page.seo.title,
     description: page.seo.description,
   };
 }
 
-export default function HowItWorksPage() {
-  const page = getHowItWorksPage();
-  const steps = getHowItWorksSteps();
+export default async function HowItWorksPage() {
+  const page = await getHowItWorksPage();
+  const steps = await getHowItWorksSteps();
 
   return (
     <>

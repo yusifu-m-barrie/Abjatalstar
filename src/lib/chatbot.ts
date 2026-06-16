@@ -1,9 +1,5 @@
-import {
-  CHAT_INTENTS,
-  CHAT_FALLBACK,
-  CHAT_WELCOME,
-  QUICK_QUESTIONS,
-} from "@/data/chatbot-knowledge";
+import { buildChatbotKnowledge, QUICK_QUESTIONS } from "@/data/chatbot-knowledge";
+import type { BranchItem, SiteSettings } from "@/lib/content";
 
 function normalize(text: string): string {
   return text
@@ -38,16 +34,29 @@ export interface ChatResponse {
   suggestions?: string[];
 }
 
-export function getChatbotResponse(input: string): ChatResponse {
+export function getChatbotResponse(
+  input: string,
+  ctx: { business: SiteSettings; branches: BranchItem[] }
+): ChatResponse {
   const trimmed = input.trim();
   if (!trimmed) {
-    return { message: "Please type a question and I'll be happy to help!", suggestions: QUICK_QUESTIONS };
+    return {
+      message: "Please type a question and I'll be happy to help!",
+      suggestions: QUICK_QUESTIONS,
+    };
   }
 
-  let bestIntent = CHAT_INTENTS[0];
+  const knowledge = buildChatbotKnowledge({
+    business: ctx.business,
+    branches: ctx.branches,
+  });
+
+  const { fallback, intents } = knowledge;
+
+  let bestIntent = intents[0];
   let bestScore = 0;
 
-  for (const intent of CHAT_INTENTS) {
+  for (const intent of intents) {
     const score = scoreIntent(trimmed, intent.keywords);
     if (score > bestScore) {
       bestScore = score;
@@ -63,14 +72,14 @@ export function getChatbotResponse(input: string): ChatResponse {
   }
 
   return {
-    message: CHAT_FALLBACK,
+    message: fallback,
     suggestions: QUICK_QUESTIONS,
   };
 }
 
-export function getWelcomeMessage(): ChatResponse {
+export function getWelcomeMessage(business: Pick<SiteSettings, "shortName">): ChatResponse {
   return {
-    message: CHAT_WELCOME,
+    message: `Hello! 👋 I'm the ${business.shortName} assistant. I can help you with remittance, Orange Money, mobile money, branches, fees, and more. What would you like to know?`,
     suggestions: QUICK_QUESTIONS,
   };
 }

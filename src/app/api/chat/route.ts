@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getChatbotResponse } from "@/lib/chatbot";
+import { getBranches, getSiteSettings } from "@/lib/content";
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,7 +14,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const response = getChatbotResponse(message);
+    const [business, branches] = await Promise.all([
+      getSiteSettings(),
+      getBranches(),
+    ]);
+
+    const response = getChatbotResponse(message, { business, branches });
 
     return NextResponse.json(response);
   } catch {

@@ -4,18 +4,18 @@ import PartnerServices from "@/components/PartnerServices";
 import ServicesSection from "@/components/ServicesSection";
 import { getServicesPage, getServices, getPartners } from "@/lib/content";
 
-export function generateMetadata(): Metadata {
-  const page = getServicesPage();
+export async function generateMetadata(): Promise<Metadata> {
+  const page = await getServicesPage();
   return {
     title: page.seo.title,
     description: page.seo.description,
   };
 }
 
-export default function ServicesPage() {
-  const page = getServicesPage();
-  const services = getServices();
-  const partners = getPartners();
+export default async function ServicesPage() {
+  const page = await getServicesPage();
+  const services = await getServices();
+  const partners = await getPartners();
 
   return (
     <>

@@ -1,12 +1,21 @@
-import fs from "fs";
-import path from "path";
-
-const CONTENT_DIR = path.join(process.cwd(), "content");
-
-function readJson<T>(relativePath: string): T {
-  const filePath = path.join(CONTENT_DIR, relativePath);
-  return JSON.parse(fs.readFileSync(filePath, "utf-8")) as T;
-}
+import { client, isSanityConfigured } from "@/sanity/client";
+import { getImageUrl } from "@/sanity/image";
+import {
+  aboutPageQuery,
+  branchesPageQuery,
+  contactPageQuery,
+  homePageQuery,
+  servicesPageQuery,
+  siteSettingsQuery,
+} from "@/sanity/queries";
+import {
+  fallbackAbout,
+  fallbackBranches,
+  fallbackContact,
+  fallbackHome,
+  fallbackServices,
+  fallbackSettings,
+} from "@/lib/fallbacks";
 
 // ─── Site Settings ───────────────────────────────────────────
 export interface SiteSettings {
@@ -34,10 +43,49 @@ export interface SiteSettings {
     twitter: string;
     instagram: string;
   };
+  footer: {
+    description: string;
+    companyHeading: string;
+    servicesHeading: string;
+    contactHeading: string;
+  };
+  seo?: {
+    title?: string;
+    description?: string;
+  };
 }
 
-export function getSiteSettings(): SiteSettings {
-  return readJson<SiteSettings>("settings/site.json");
+type SanitySiteSettings = Omit<SiteSettings, "logo"> & {
+  logo?: { asset?: { _ref: string } } | null;
+};
+
+async function fetchSanity<T>(query: string): Promise<T | null> {
+  if (!isSanityConfigured) return null;
+  try {
+    return await client.fetch<T | null>(query);
+  } catch {
+    return null;
+  }
+}
+
+function mapSettings(doc: SanitySiteSettings | null): SiteSettings {
+  if (!doc) return fallbackSettings as SiteSettings;
+  return {
+    ...doc,
+    logo: getImageUrl(doc.logo, fallbackSettings.logo),
+    social: {
+      facebook: doc.social?.facebook || fallbackSettings.social.facebook,
+      twitter: doc.social?.twitter || fallbackSettings.social.twitter,
+      instagram: doc.social?.instagram || fallbackSettings.social.instagram,
+    },
+    footer: { ...fallbackSettings.footer, ...doc.footer },
+    hours: { ...fallbackSettings.hours, ...doc.hours },
+  };
+}
+
+export async function getSiteSettings(): Promise<SiteSettings> {
+  const doc = await fetchSanity<SanitySiteSettings>(siteSettingsQuery);
+  return mapSettings(doc);
 }
 
 // ─── Shared Data ─────────────────────────────────────────────
@@ -70,6 +118,16 @@ export interface BranchItem {
   isMain?: boolean;
 }
 
+export interface AgentItem {
+  id: string;
+  name: string;
+  city: string;
+  location: string;
+  phone: string;
+  services: string[];
+  isActive: boolean;
+}
+
 export interface WhyChooseItem {
   title: string;
   description: string;
@@ -91,24 +149,36 @@ export interface TrustBadgeItem {
   accent: string;
 }
 
-export function getServices() {
-  return readJson<{ items: ServiceItem[] }>("shared/services.json").items;
+export async function getServices(): Promise<ServiceItem[]> {
+  const page = await fetchSanity<{ items?: ServiceItem[] }>(servicesPageQuery);
+  return page?.items ?? fallbackServices.items;
 }
 
-export function getPartners() {
-  return readJson<{ items: PartnerItem[] }>("shared/partners.json").items;
+export async function getPartners(): Promise<PartnerItem[]> {
+  const page = await fetchSanity<{ partners?: PartnerItem[] }>(servicesPageQuery);
+  return page?.partners ?? fallbackServices.partners;
 }
 
-export function getBranches() {
-  return readJson<{ items: BranchItem[] }>("shared/branches.json").items;
+export async function getBranches(): Promise<BranchItem[]> {
+  const page = await fetchSanity<{ items?: BranchItem[] }>(branchesPageQuery);
+  return page?.items ?? fallbackBranches.items;
 }
 
-export function getWhyChooseUs() {
-  return readJson<{ items: WhyChooseItem[] }>("shared/why-choose-us.json").items;
+export async function getAgents(): Promise<AgentItem[]> {
+  const page = await fetchSanity<{ items?: AgentItem[] }>(
+    `*[_type == "agentsPage"][0]{ items }`
+  );
+  return page?.items ?? (await import("@/lib/fallbacks")).fallbackAgents.items;
 }
 
-export function getHowItWorksSteps() {
-  return readJson<{ sending: StepItem[]; receiving: StepItem[] }>("shared/how-it-works.json");
+export async function getWhyChooseUs(): Promise<WhyChooseItem[]> {
+  const home = await fetchSanity<HomePageContent>(homePageQuery);
+  return home?.whyChooseUs?.items ?? fallbackHome.whyChooseUs.items;
+}
+
+export async function getHowItWorksSteps() {
+  const home = await fetchSanity<HomePageContent>(homePageQuery);
+  return home?.howItWorks?.steps ?? fallbackHome.howItWorks.steps;
 }
 
 // ─── Page Content ────────────────────────────────────────────
@@ -135,6 +205,7 @@ export interface HomePageContent {
       securityText: string;
     };
   };
+  seo?: { title: string; description: string };
   trustBadges: TrustBadgeItem[];
   partners: { eyebrow: string; title: string; description: string };
   services: {
@@ -159,6 +230,7 @@ export interface HomePageContent {
       years: string;
       yearsLabel: string;
     };
+    items: WhyChooseItem[];
   };
   branches: {
     eyebrow: string;
@@ -175,46 +247,10 @@ export interface HomePageContent {
     description: string;
     compact: boolean;
     linkText: string;
+    steps: { sending: StepItem[]; receiving: StepItem[] };
   };
   contact: { eyebrow: string; title: string; description: string };
-}
-
-export function getHomePage(): HomePageContent {
-  return readJson<HomePageContent>("pages/home.json");
-}
-
-export function getAboutPage() {
-  return readJson<{
-    seo: { title: string; description: string };
-    header: PageHeader;
-    whoWeAre: { title: string; paragraphs: string[] };
-    mission: { title: string; text: string };
-    vision: { title: string; text: string };
-    values: { title: string; description: string; items: { title: string; description: string }[] };
-    showTrustBadges: boolean;
-    showWhyChooseUs: boolean;
-  }>("pages/about.json");
-}
-
-export function getServicesPage() {
-  return readJson<{
-    seo: { title: string; description: string };
-    header: PageHeader;
-    servicesSection: { eyebrow: string; title: string; description: string };
-    partnersSection: { eyebrow: string; title: string; description: string };
-  }>("pages/services.json");
-}
-
-export function getBranchesPage() {
-  return readJson<{
-    seo: { title: string; description: string };
-    header: PageHeader;
-    section: { eyebrow: string; title: string; description: string; bannerText: string };
-  }>("pages/branches.json");
-}
-
-export function getHowItWorksPage() {
-  return readJson<{
+  howItWorksPage: {
     seo: { title: string; description: string };
     header: PageHeader;
     section: {
@@ -230,30 +266,64 @@ export function getHowItWorksPage() {
       primaryButton: string;
       secondaryButton: string;
     };
-  }>("pages/how-it-works.json");
+  };
 }
 
-export function getContactPage() {
-  return readJson<{
+export async function getHomePage(): Promise<HomePageContent> {
+  const doc = await fetchSanity<HomePageContent>(homePageQuery);
+  return doc ?? (fallbackHome as HomePageContent);
+}
+
+export async function getAboutPage() {
+  const doc = await fetchSanity<typeof fallbackAbout>(aboutPageQuery);
+  return doc ?? fallbackAbout;
+}
+
+export async function getServicesPage() {
+  const doc = await fetchSanity<{
     seo: { title: string; description: string };
     header: PageHeader;
-    section: {
-      eyebrow: string;
-      title: string;
-      description: string;
-      contactInfoTitle: string;
-      formTitle: string;
-      successTitle: string;
-      successMessage: string;
-      sendAnotherText: string;
-      submitButton: string;
-      fields: {
-        fullName: { label: string; placeholder: string };
-        phone: { label: string; placeholder: string };
-        service: { label: string; placeholder: string };
-        message: { label: string; placeholder: string };
-      };
+    servicesSection: { eyebrow: string; title: string; description: string };
+    partnersSection: { eyebrow: string; title: string; description: string };
+  }>(servicesPageQuery);
+  if (doc) {
+    return {
+      seo: doc.seo,
+      header: doc.header,
+      servicesSection: doc.servicesSection,
+      partnersSection: doc.partnersSection,
     };
-    serviceOptions: string[];
-  }>("pages/contact.json");
+  }
+  return {
+    seo: fallbackServices.seo,
+    header: fallbackServices.header,
+    servicesSection: fallbackServices.servicesSection,
+    partnersSection: fallbackServices.partnersSection,
+  };
+}
+
+export async function getBranchesPage() {
+  const doc = await fetchSanity<typeof fallbackBranches>(branchesPageQuery);
+  if (doc) {
+    return {
+      seo: doc.seo,
+      header: doc.header,
+      section: doc.section,
+    };
+  }
+  return {
+    seo: fallbackBranches.seo,
+    header: fallbackBranches.header,
+    section: fallbackBranches.section,
+  };
+}
+
+export async function getHowItWorksPage() {
+  const home = await getHomePage();
+  return home.howItWorksPage;
+}
+
+export async function getContactPage() {
+  const doc = await fetchSanity<typeof fallbackContact>(contactPageQuery);
+  return doc ?? fallbackContact;
 }

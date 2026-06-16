@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, FormEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Bot, Send, X, MessageSquare, Loader2 } from "lucide-react";
 import { getWelcomeMessage } from "@/lib/chatbot";
-import { BUSINESS } from "@/lib/constants";
+import { useBusiness } from "@/context/SiteSettingsContext";
 import { cn } from "@/lib/utils";
 
 interface Message {
@@ -22,6 +22,7 @@ export default function ChatBot() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const idRef = useRef(0);
+  const business = useBusiness();
 
   const nextId = (prefix: string) => {
     idRef.current += 1;
@@ -32,7 +33,7 @@ export default function ChatBot() {
     setIsOpen(true);
     setMessages((prev) => {
       if (prev.length > 0) return prev;
-      const welcome = getWelcomeMessage();
+        const welcome = getWelcomeMessage(business);
       return [
         {
           id: "welcome",
@@ -92,7 +93,7 @@ export default function ChatBot() {
         {
           id: nextId("bot-error"),
           role: "bot",
-          content: `Sorry, I couldn't process that. Please call us at ${BUSINESS.phoneDisplay} for immediate help.`,
+          content: `Sorry, I couldn't process that. Please call us at ${business.phoneDisplay} for immediate help.`,
           suggestions: ["Contact information", "Branch locations"],
         },
       ]);
@@ -124,7 +125,7 @@ export default function ChatBot() {
                   <Bot className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold">{BUSINESS.shortName} Assistant</p>
+                  <p className="text-sm font-semibold">{business.shortName} Assistant</p>
                   <p className="text-xs text-blue-200">Remittance & Money Services</p>
                 </div>
               </div>

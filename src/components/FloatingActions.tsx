@@ -2,13 +2,14 @@
 
 import { motion } from "framer-motion";
 import { MessageCircle, Phone } from "lucide-react";
-import { BUSINESS } from "@/lib/constants";
+import { useBusiness } from "@/context/SiteSettingsContext";
 
 export default function FloatingActions() {
+  const business = useBusiness();
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
       <motion.a
-        href={`tel:${BUSINESS.phone.replace(/\s/g, "")}`}
+        href={`tel:${business.phone.replace(/\s/g, "")}`}
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.5 }}
@@ -21,7 +22,7 @@ export default function FloatingActions() {
       </motion.a>
 
       <motion.a
-        href={`https://wa.me/${BUSINESS.whatsapp}`}
+        href={`https://wa.me/${business.whatsapp}`}
         target="_blank"
         rel="noopener noreferrer"
         initial={{ opacity: 0, scale: 0.8 }}

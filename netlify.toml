@@ -7,8 +7,3 @@
 [build.environment]
   NODE_VERSION = "20"
 
-# Redirect /admin to CMS
-[[redirects]]
-  from = "/admin"
-  to = "/admin/index.html"
-  status = 200

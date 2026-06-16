@@ -3,17 +3,17 @@ import PageHeader from "@/components/PageHeader";
 import BranchesSection from "@/components/BranchesSection";
 import { getBranchesPage, getBranches } from "@/lib/content";
 
-export function generateMetadata(): Metadata {
-  const page = getBranchesPage();
+export async function generateMetadata(): Promise<Metadata> {
+  const page = await getBranchesPage();
   return {
     title: page.seo.title,
     description: page.seo.description,
   };
 }
 
-export default function BranchesPage() {
-  const page = getBranchesPage();
-  const branches = getBranches();
+export default async function BranchesPage() {
+  const page = await getBranchesPage();
+  const branches = await getBranches();
 
   return (
     <>
