@@ -5,7 +5,7 @@ import { getSiteSettings } from "@/lib/content";
 export const dynamic = "force-dynamic";
 
 const TO_EMAIL =
-  process.env.CONTACT_FORM_TO_EMAIL ?? "usifubarriem@gmail.com";
+  process.env.CONTACT_FORM_TO_EMAIL ?? "info@abjatalstar.com";
 
 const FROM_EMAIL =
   process.env.CONTACT_FORM_FROM_EMAIL ??
