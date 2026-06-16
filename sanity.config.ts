@@ -20,10 +20,14 @@ export default defineConfig({
   document: {
     actions: (prev, context) => {
       const roles = context.currentUser?.roles ?? [];
-      const isMainAdmin = roles.some((r) => r.name === "mainAdmin");
-      const isStaffEditor = roles.some((r) => r.name === "staffEditor");
+      const isMainAdmin = roles.some(
+        (r) => r.name === "mainAdmin" || r.name === "administrator"
+      );
+      const isStaffEditor =
+        !isMainAdmin &&
+        roles.some((r) => r.name === "staffEditor" || r.name === "editor");
 
-      if (!isStaffEditor || isMainAdmin) return prev;
+      if (!isStaffEditor) return prev;
 
       const websiteDocTypes = new Set([
         "siteSettings",
