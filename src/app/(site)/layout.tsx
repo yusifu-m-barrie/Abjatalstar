@@ -6,8 +6,6 @@ import ChatBot from "@/components/ChatBot";
 import { getSiteSettings } from "@/lib/content";
 import { SiteSettingsProvider } from "@/context/SiteSettingsContext";
 
-export const revalidate = 60;
-
 export async function generateMetadata(): Promise<Metadata> {
   const business = await getSiteSettings();
 

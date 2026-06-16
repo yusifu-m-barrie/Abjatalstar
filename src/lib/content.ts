@@ -1,4 +1,5 @@
-import { client, isSanityConfigured, sanityRevalidate } from "@/sanity/client";
+import { client, isSanityConfigured } from "@/sanity/client";
+import { CMS_CACHE_TAG } from "@/sanity/live";
 import { getImageUrl } from "@/sanity/image";
 import {
   aboutPageQuery,
@@ -62,9 +63,7 @@ type SanitySiteSettings = Omit<SiteSettings, "logo"> & {
 async function fetchSanity<T>(query: string): Promise<T | null> {
   if (!isSanityConfigured) return null;
   try {
-    return await client.fetch<T | null>(query, {}, {
-      next: { revalidate: sanityRevalidate },
-    });
+    return await client.fetch<T | null>(query, {}, { next: { tags: [CMS_CACHE_TAG] } });
   } catch {
     return null;
   }

@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
+import { SanityLive } from "@/sanity/live";
+import { sanityLiveUpdateAction } from "@/sanity/live-action";
+import { isSanityConfigured } from "@/sanity/client";
 import "./globals.css";
 
 const plusJakarta = Plus_Jakarta_Sans({
@@ -29,6 +32,9 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         {children}
+        {isSanityConfigured ? (
+          <SanityLive action={sanityLiveUpdateAction} />
+        ) : null}
       </body>
     </html>
   );
