@@ -50,24 +50,30 @@ export function getConfiguredMailAdmins(): MailAdminCredential[] {
     admins.push({
       email: (
         process.env.MAIL_SUPER_ADMIN_EMAIL ?? "super@abjatalstar.com"
-      ).toLowerCase(),
-      password: process.env.MAIL_SUPER_ADMIN_PASSWORD,
+      )
+        .trim()
+        .toLowerCase(),
+      password: process.env.MAIL_SUPER_ADMIN_PASSWORD.trim(),
       role: "super_admin",
     });
   }
 
   if (process.env.MAIL_ADMIN_PASSWORD) {
     admins.push({
-      email: (process.env.MAIL_ADMIN_EMAIL ?? "admin@abjatalstar.com").toLowerCase(),
-      password: process.env.MAIL_ADMIN_PASSWORD,
+      email: (process.env.MAIL_ADMIN_EMAIL ?? "admin@abjatalstar.com")
+        .trim()
+        .toLowerCase(),
+      password: process.env.MAIL_ADMIN_PASSWORD.trim(),
       role: "admin",
     });
   }
 
   if (process.env.MAIL_EDITOR_PASSWORD) {
     admins.push({
-      email: (process.env.MAIL_EDITOR_EMAIL ?? "editor@abjatalstar.com").toLowerCase(),
-      password: process.env.MAIL_EDITOR_PASSWORD,
+      email: (process.env.MAIL_EDITOR_EMAIL ?? "editor@abjatalstar.com")
+        .trim()
+        .toLowerCase(),
+      password: process.env.MAIL_EDITOR_PASSWORD.trim(),
       role: "editor",
     });
   }
@@ -80,10 +86,12 @@ export function authenticateMailAdmin(
   password: string
 ): { email: string; role: MailAdminRole } | null {
   const normalizedEmail = email.trim().toLowerCase();
-  if (!normalizedEmail || !password) return null;
+  const normalizedPassword = password.trim();
+  if (!normalizedEmail || !normalizedPassword) return null;
 
   const match = getConfiguredMailAdmins().find(
-    (admin) => admin.email === normalizedEmail && admin.password === password
+    (admin) =>
+      admin.email === normalizedEmail && admin.password === normalizedPassword
   );
 
   if (!match) return null;
