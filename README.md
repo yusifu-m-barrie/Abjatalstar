@@ -90,7 +90,8 @@ Hybrid email portal — creates `@abjatalstar.com` mailboxes in HostGator/cPanel
 | `CPANEL_USERNAME` | cPanel username |
 | `CPANEL_API_TOKEN` | cPanel → Security → API Tokens |
 | `NEXT_PUBLIC_WEBMAIL_URL` | Branded gateway, e.g. `https://abjatalstar.com/webmail` |
-| `WEBMAIL_DESTINATION_URL` | Real HostGator webmail URL (server-only) |
+| `WEBMAIL_DESTINATION_URL` | HostGator webmail URL, e.g. `https://abjatalstar.com:2096` (from cPanel → Access Webmail) |
+| `NEXT_PUBLIC_WEBMAIL_DIRECT_URL` | Same HostGator URL for the direct webmail button on `/mail` |
 | `NEXT_PUBLIC_BRAND_NAME` | `AbjatalStar` |
 | `NEXT_PUBLIC_MAIL_DOMAIN` | `abjatalstar.com` |
 | `MAIL_ADMIN_PASSWORD` | Password for `/admin/email-accounts` |

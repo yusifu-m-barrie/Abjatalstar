@@ -17,7 +17,7 @@ export const mailConfig = {
 /** Actual HostGator/cPanel webmail (server-only). Set in Vercel from cPanel → Email → Access Webmail. */
 export function getWebmailDestinationUrl(email?: string): string {
   const destination =
-    process.env.WEBMAIL_DESTINATION_URL ?? "https://webmail.abjatalstar.com";
+    process.env.WEBMAIL_DESTINATION_URL ?? "https://abjatalstar.com:2096";
   const url = new URL(destination);
   if (email) {
     url.searchParams.set("email", email);
