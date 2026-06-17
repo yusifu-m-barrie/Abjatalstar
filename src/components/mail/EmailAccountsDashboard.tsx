@@ -279,13 +279,37 @@ export default function EmailAccountsDashboard() {
               . Passwords are never stored in this dashboard.
             </p>
           ) : (
-            <p>
-              <strong>HostGator API not configured.</strong> Add{" "}
-              <code className="rounded bg-white/80 px-1">CPANEL_HOST</code>,{" "}
-              <code className="rounded bg-white/80 px-1">CPANEL_USERNAME</code>, and{" "}
-              <code className="rounded bg-white/80 px-1">CPANEL_API_TOKEN</code> on Vercel to
-              create mailboxes automatically. No DNS changes are made.
-            </p>
+            <div className="space-y-2">
+              <p>
+                <strong>HostGator API not configured.</strong> Staff records can still be saved as{" "}
+                <strong>Inactive</strong>, but mailboxes are not created in HostGator until you add
+                these to your local <code className="rounded bg-white/80 px-1">.env</code> and on{" "}
+                <strong>Vercel</strong>:
+              </p>
+              <ul className="list-inside list-disc space-y-1 pl-1">
+                <li>
+                  <code className="rounded bg-white/80 px-1">CPANEL_HOST</code> ={" "}
+                  <code className="rounded bg-white/80 px-1">abjatalstar.com</code>
+                </li>
+                <li>
+                  <code className="rounded bg-white/80 px-1">CPANEL_USERNAME</code> = your cPanel
+                  login username
+                </li>
+                <li>
+                  <code className="rounded bg-white/80 px-1">CPANEL_API_TOKEN</code> = from cPanel
+                  → Security → Manage API Tokens
+                </li>
+                <li>
+                  <code className="rounded bg-white/80 px-1">EMAIL_PROVIDER</code> ={" "}
+                  <code className="rounded bg-white/80 px-1">cpanel</code>
+                </li>
+              </ul>
+              <p className="text-xs">
+                Restart <code className="rounded bg-white/80 px-1">npm run dev</code> after updating
+                .env. Then edit an Inactive staff member, set a password, and save to create the
+                mailbox in HostGator.
+              </p>
+            </div>
           )}
         </div>
 
@@ -517,10 +541,18 @@ export default function EmailAccountsDashboard() {
               ) : (
                 <>
                   <PasswordField
-                    label="New password (optional)"
+                    label={
+                      form.status === "inactive" && cpanelConfigured
+                        ? "Mailbox password (creates in HostGator on save)"
+                        : "New password (optional)"
+                    }
                     value={form.newPassword}
                     onChange={(v) => setForm({ ...form, newPassword: v })}
-                    placeholder="Leave blank to keep current password"
+                    placeholder={
+                      form.status === "inactive" && cpanelConfigured
+                        ? "Required to create mailbox in HostGator"
+                        : "Leave blank to keep current password"
+                    }
                   />
                   <PasswordField
                     label="Confirm new password"
@@ -528,6 +560,12 @@ export default function EmailAccountsDashboard() {
                     onChange={(v) => setForm({ ...form, confirmNewPassword: v })}
                     placeholder="Re-enter new password"
                   />
+                  {form.status === "inactive" && cpanelConfigured && (
+                    <p className="text-xs text-muted">
+                      This staff member is <strong>Inactive</strong>. Enter a password and save to
+                      create their mailbox in HostGator automatically.
+                    </p>
+                  )}
                 </>
               )}
 

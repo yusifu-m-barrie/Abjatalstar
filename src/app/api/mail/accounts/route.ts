@@ -19,6 +19,17 @@ function unauthorized() {
   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 }
 
+function shouldFallbackToInactive(message: string): boolean {
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes("could not reach hostgator cpanel api") ||
+    normalized.includes("fetch failed") ||
+    normalized.includes("timed out") ||
+    normalized.includes("econnrefused") ||
+    normalized.includes("enotfound")
+  );
+}
+
 export async function GET() {
   if (!(await isMailAdminAuthenticated())) return unauthorized();
 
@@ -98,10 +109,29 @@ export async function POST(request: NextRequest) {
     const provider = getEmailProvider();
     const provision = await provider.createAccount(input, { password });
 
+    if (!provision.success && (provision.requiresManualSetup || shouldFallbackToInactive(provision.message))) {
+      const account = await createEmailAccountRecord({
+        ...input,
+        status: "inactive",
+        notes:
+          notes ||
+          `Pending HostGator mailbox for ${email}. Add CPANEL_* env vars for auto-create, or create manually in cPanel.`,
+      });
+
+      return NextResponse.json({
+        account,
+        pendingSetup: true,
+        provision: {
+          ...provision,
+          message: `Staff record saved as Inactive. HostGator mailbox creation failed right now (${provision.message}). Check CPANEL_HOST/CPANEL_USERNAME/CPANEL_API_TOKEN, then edit this staff member and set a password to create the mailbox. Until then, create ${email} manually in HostGator cPanel with the password you chose.`,
+        },
+      });
+    }
+
     if (!provision.success) {
       return NextResponse.json(
         { error: provision.message, provision },
-        { status: provision.requiresManualSetup ? 503 : 502 }
+        { status: 502 }
       );
     }
 

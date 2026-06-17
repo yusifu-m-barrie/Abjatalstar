@@ -28,7 +28,8 @@ export class ManualEmailProvider implements EmailProvider {
       return {
         success: false,
         requiresManualSetup: true,
-        message: this.getSetupInstructions(input.email),
+        message:
+          "HostGator cPanel API is not configured. Add CPANEL_HOST, CPANEL_USERNAME, and CPANEL_API_TOKEN.",
       };
     }
 

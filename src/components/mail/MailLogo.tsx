@@ -15,8 +15,9 @@ const sizes = {
 };
 
 export default function MailLogo({ size = "md" }: MailLogoProps) {
-  const [useText, setUseText] = useState(false);
-  const [src, setSrc] = useState(mailConfig.logoPath);
+  const hasLogo = Boolean(mailConfig.logoPath);
+  const [useText, setUseText] = useState(!hasLogo);
+  const [src, setSrc] = useState(mailConfig.logoPath ?? "");
 
   if (useText) {
     return (
@@ -38,7 +39,7 @@ export default function MailLogo({ size = "md" }: MailLogoProps) {
         unoptimized
         className={`object-contain ${sizes[size]}`}
         onError={() => {
-          if (src === mailConfig.logoPath) {
+          if (src === mailConfig.logoPath && mailConfig.fallbackLogoPath) {
             setSrc(mailConfig.fallbackLogoPath);
           } else {
             setUseText(true);

@@ -37,15 +37,31 @@ export async function cpanelUapi<T = unknown>(
     url.searchParams.set(key, String(value));
   }
 
-  const response = await fetch(url.toString(), {
-    method: "GET",
-    headers: {
-      Authorization: `cpanel ${user}:${token}`,
-    },
-    cache: "no-store",
-  });
+  let response: Response;
+  try {
+    response = await fetch(url.toString(), {
+      method: "GET",
+      headers: {
+        Authorization: `cpanel ${user}:${token}`,
+      },
+      cache: "no-store",
+      signal: AbortSignal.timeout(10000),
+    });
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : "Unknown network error.";
+    throw new Error(
+      `Could not reach HostGator cPanel API at https://${host}:2083. Check CPANEL_HOST, firewall/port 2083 access, and cPanel API token. (${detail})`
+    );
+  }
 
-  const payload = (await response.json()) as CpanelResponse<T>;
+  let payload: CpanelResponse<T>;
+  try {
+    payload = (await response.json()) as CpanelResponse<T>;
+  } catch {
+    throw new Error(
+      `HostGator cPanel API returned a non-JSON response (${response.status}). Verify CPANEL_HOST and that cPanel API access is enabled.`
+    );
+  }
 
   if (!response.ok || payload.status !== 1) {
     const message =

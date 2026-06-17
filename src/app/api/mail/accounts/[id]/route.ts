@@ -7,6 +7,7 @@ import {
 } from "@/lib/email-accounts/store";
 import { isValidMailboxPassword } from "@/lib/mail-email";
 import { getCpanelEmailProvider } from "@/lib/email-providers";
+import { isCpanelConfigured } from "@/lib/email-providers/cpanel-client";
 
 export const dynamic = "force-dynamic";
 
@@ -66,14 +67,43 @@ export async function PATCH(
         );
       }
 
-      const passwordResult = await getCpanelEmailProvider().updatePassword(
-        existing.email,
-        newPassword
-      );
-      if (!passwordResult.success) {
-        return NextResponse.json({ error: passwordResult.message }, { status: 502 });
+      if (!isCpanelConfigured()) {
+        return NextResponse.json(
+          {
+            error:
+              "HostGator API is not configured. Add CPANEL_HOST, CPANEL_USERNAME, and CPANEL_API_TOKEN to your .env or Vercel.",
+          },
+          { status: 503 }
+        );
       }
-      passwordMessage = passwordResult.message;
+
+      if (existing.status === "inactive") {
+        const createResult = await getCpanelEmailProvider().createAccount(
+          {
+            fullName: update.fullName ?? existing.fullName,
+            email: existing.email,
+            role: update.role ?? existing.role,
+            department: update.department ?? existing.department,
+            status: "active",
+            notes: update.notes ?? existing.notes,
+          },
+          { password: newPassword }
+        );
+        if (!createResult.success) {
+          return NextResponse.json({ error: createResult.message }, { status: 502 });
+        }
+        update.status = "active";
+        passwordMessage = createResult.message;
+      } else {
+        const passwordResult = await getCpanelEmailProvider().updatePassword(
+          existing.email,
+          newPassword
+        );
+        if (!passwordResult.success) {
+          return NextResponse.json({ error: passwordResult.message }, { status: 502 });
+        }
+        passwordMessage = passwordResult.message;
+      }
     }
 
     const account = await updateEmailAccountRecord(id, update);
@@ -103,9 +133,13 @@ export async function DELETE(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const removal = await getCpanelEmailProvider().deleteMailbox(existing.email);
-  if (!removal.success) {
-    return NextResponse.json({ error: removal.message }, { status: 502 });
+  let removalMessage = "Removed from dashboard.";
+  if (isCpanelConfigured()) {
+    const removal = await getCpanelEmailProvider().deleteMailbox(existing.email);
+    if (!removal.success) {
+      return NextResponse.json({ error: removal.message }, { status: 502 });
+    }
+    removalMessage = removal.message;
   }
 
   const deleted = await deleteEmailAccountRecord(id);
@@ -113,5 +147,5 @@ export async function DELETE(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ success: true, message: removal.message });
+  return NextResponse.json({ success: true, message: removalMessage });
 }

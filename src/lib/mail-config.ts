@@ -10,8 +10,8 @@ export const mailConfig = {
     process.env.NEXT_PUBLIC_WEBMAIL_URL ??
     "https://abjatalstar.com/webmail",
   emailProvider: (process.env.EMAIL_PROVIDER ?? "manual") as "manual" | "cpanel",
-  logoPath: "/logo.png",
-  fallbackLogoPath: "/abjatal-star-logo.png",
+  logoPath: process.env.NEXT_PUBLIC_BRAND_LOGO_PATH,
+  fallbackLogoPath: process.env.NEXT_PUBLIC_BRAND_FALLBACK_LOGO_PATH,
 };
 
 /** Actual HostGator/cPanel webmail (server-only). Set in Vercel from cPanel → Email → Access Webmail. */
