@@ -25,7 +25,7 @@ function getSessionSecret(): string {
       "Mail admin session secret is not configured. Set MAIL_SESSION_SECRET or MAIL_ADMIN_PASSWORD."
     );
   }
-  return secret;
+  return secret.trim();
 }
 
 function sign(payload: string): string {
@@ -44,7 +44,12 @@ export function verifyAdminSessionToken(
   if (!token) return null;
 
   try {
-    const [payload, signature] = token.split(".");
+    const normalizedToken = token.includes("%") ? decodeURIComponent(token) : token;
+    const dotIndex = normalizedToken.lastIndexOf(".");
+    if (dotIndex <= 0) return null;
+
+    const payload = normalizedToken.slice(0, dotIndex);
+    const signature = normalizedToken.slice(dotIndex + 1);
     if (!payload || !signature) return null;
 
     const expected = sign(payload);
