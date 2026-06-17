@@ -71,7 +71,7 @@ Password note:
 
 ## Branded staff email (AbjatalStar Mail)
 
-Hybrid email portal — **no DNS or HostGator changes** from the app. Uses existing `@abjatalstar.com` mailboxes on HostGator/cPanel.
+Hybrid email portal — creates `@abjatalstar.com` mailboxes in HostGator/cPanel when the admin adds staff (no DNS changes from the app).
 
 ### Live URLs
 
@@ -81,11 +81,14 @@ Hybrid email portal — **no DNS or HostGator changes** from the app. Uses exist
 | Webmail gateway | https://abjatalstar.com/webmail → HostGator |
 | Email admin dashboard | https://www.abjatalstar.com/admin/email-accounts |
 
-### Environment variables (Vercel)
+### Environment variables (Vercel + local `.env`)
 
 | Variable | Purpose |
 |----------|---------|
-| `EMAIL_PROVIDER` | `manual` (default) or `cpanel` (scaffold only) |
+| `EMAIL_PROVIDER` | `cpanel` (recommended) or `manual` |
+| `CPANEL_HOST` | e.g. `abjatalstar.com` |
+| `CPANEL_USERNAME` | cPanel username |
+| `CPANEL_API_TOKEN` | cPanel → Security → API Tokens |
 | `NEXT_PUBLIC_WEBMAIL_URL` | Branded gateway, e.g. `https://abjatalstar.com/webmail` |
 | `WEBMAIL_DESTINATION_URL` | Real HostGator webmail URL (server-only) |
 | `NEXT_PUBLIC_BRAND_NAME` | `AbjatalStar` |
@@ -95,28 +98,30 @@ Hybrid email portal — **no DNS or HostGator changes** from the app. Uses exist
 
 Optional: `NEXT_PUBLIC_WEBMAIL_DIRECT_URL` for the “Open Webmail Directly” button.
 
+When `CPANEL_HOST`, `CPANEL_USERNAME`, and `CPANEL_API_TOKEN` are set, the dashboard shows **HostGator connected** and creates mailboxes automatically.
+
 ### Staff login flow
 
 1. Staff opens `/mail` and enters `@abjatalstar.com` email + mailbox password.
-2. Password is **never stored** — only validated locally, then cleared.
+2. Password is **never stored** on the site — staff sign in on HostGator webmail.
 3. User is sent to `/webmail`, which redirects to HostGator webmail.
-4. Staff completes sign-in on HostGator (existing cPanel mailboxes).
 
 ### Admin email workflow
 
 1. Open `/admin/email-accounts/login` → enter `MAIL_ADMIN_PASSWORD`.
-2. Add staff record (name, email, role, department).
-3. System shows: *Create this email inside HostGator cPanel → Email Accounts.*
-4. Create the mailbox in HostGator manually.
-5. Mark the record **Active** in the dashboard.
+2. Click **Add Staff Email** → enter name, username (e.g. `ayon` → `ayon@abjatalstar.com`), and **mailbox password**.
+3. The app creates the mailbox in HostGator via cPanel API and saves the staff record as **Active**.
+4. Share the password securely with the staff member — it is not stored in the dashboard.
+5. To reset a password, edit the staff record and set a new password (updates HostGator).
 
 ### Provider architecture
 
 ```
 src/lib/email-providers/
   types.ts            — provider interface
-  manual-provider.ts  — default (in use)
-  cpanel-provider.ts — scaffold only, no live API calls
+  manual-provider.ts  — fallback when cPanel API is not configured
+  cpanel-provider.ts  — HostGator mailbox create / password / delete
+  cpanel-client.ts    — cPanel UAPI calls
 ```
 
 ---

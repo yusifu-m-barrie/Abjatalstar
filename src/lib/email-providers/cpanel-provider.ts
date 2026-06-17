@@ -1,42 +1,118 @@
-import type { EmailAccount } from "@/lib/email-accounts/types";
-import type { CreateEmailAccountResult, EmailProvider } from "./types";
+import type { EmailAccountInput } from "@/lib/email-accounts/types";
+import type {
+  CreateEmailAccountResult,
+  EmailProvider,
+  ProvisionMailboxOptions,
+} from "./types";
+import {
+  cpanelAddMailbox,
+  cpanelDeleteMailbox,
+  cpanelUpdateMailboxPassword,
+  isCpanelConfigured,
+} from "./cpanel-client";
+import { mailConfig } from "@/lib/mail-config";
+import { parseEmailLocalPart } from "@/lib/mail-email";
 
-/**
- * Scaffold for future HostGator/cPanel API integration.
- * Do NOT call real cPanel endpoints until credentials and security review are in place.
- */
 export class CpanelEmailProvider implements EmailProvider {
   name = "cpanel" as const;
 
   getSetupInstructions(email: string): string {
-    return `cPanel API integration is not enabled yet. Create ${email} manually in HostGator cPanel → Email Accounts.`;
+    return `Mailbox ${email} is created automatically in HostGator cPanel.`;
   }
 
   async createAccount(
-    account: EmailAccount
+    input: EmailAccountInput,
+    options: ProvisionMailboxOptions
   ): Promise<CreateEmailAccountResult> {
-    const host = process.env.CPANEL_HOST;
-    const user = process.env.CPANEL_USERNAME;
-    const token = process.env.CPANEL_API_TOKEN;
-
-    if (!host || !user || !token) {
+    if (!isCpanelConfigured()) {
       return {
         success: false,
         requiresManualSetup: true,
         message:
-          "cPanel API credentials are not configured. Use manual HostGator setup for now.",
-        account,
+          "HostGator cPanel API is not configured. Add CPANEL_HOST, CPANEL_USERNAME, and CPANEL_API_TOKEN on Vercel.",
       };
     }
 
-    // Future: secure server-side cPanel UAPI call would go here.
-    return {
-      success: false,
-      requiresManualSetup: true,
-      message:
-        "cPanel automation is scaffolded but not implemented. Complete mailbox setup in HostGator cPanel.",
-      account,
-    };
+    if (!options.password) {
+      return {
+        success: false,
+        message: "A mailbox password is required to create the HostGator email account.",
+      };
+    }
+
+    const localPart = parseEmailLocalPart(input.email);
+
+    try {
+      await cpanelAddMailbox(
+        localPart,
+        options.password,
+        mailConfig.mailDomain
+      );
+
+      return {
+        success: true,
+        message: `${input.email} was created in HostGator. Share the password with the staff member for login at /mail.`,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to create mailbox in HostGator cPanel.",
+      };
+    }
+  }
+
+  async updatePassword(
+    email: string,
+    password: string
+  ): Promise<{ success: boolean; message: string }> {
+    if (!isCpanelConfigured()) {
+      return {
+        success: false,
+        message: "cPanel API is not configured on the server.",
+      };
+    }
+
+    try {
+      await cpanelUpdateMailboxPassword(
+        parseEmailLocalPart(email),
+        password,
+        mailConfig.mailDomain
+      );
+      return {
+        success: true,
+        message: `Password updated for ${email} in HostGator.`,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to update mailbox password in HostGator.",
+      };
+    }
+  }
+
+  async deleteMailbox(email: string): Promise<{ success: boolean; message: string }> {
+    if (!isCpanelConfigured()) {
+      return { success: false, message: "cPanel API is not configured on the server." };
+    }
+
+    try {
+      await cpanelDeleteMailbox(parseEmailLocalPart(email), mailConfig.mailDomain);
+      return { success: true, message: `${email} removed from HostGator cPanel.` };
+    } catch (error) {
+      return {
+        success: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to delete mailbox from HostGator.",
+      };
+    }
   }
 }
 

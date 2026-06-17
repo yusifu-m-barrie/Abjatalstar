@@ -17,29 +17,39 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import MailLogo from "@/components/mail/MailLogo";
 import type { EmailAccount, EmailAccountStatus } from "@/lib/email-accounts/types";
+import { buildStaffEmail, parseEmailLocalPart } from "@/lib/mail-email";
 import { mailConfig } from "@/lib/mail-config";
 
 type FormState = {
   fullName: string;
-  email: string;
+  emailLocalPart: string;
   role: string;
   department: string;
   status: EmailAccountStatus;
   notes: string;
+  password: string;
+  confirmPassword: string;
+  newPassword: string;
+  confirmNewPassword: string;
 };
 
 const emptyForm: FormState = {
   fullName: "",
-  email: "",
+  emailLocalPart: "",
   role: "",
   department: "",
-  status: "inactive",
+  status: "active",
   notes: "",
+  password: "",
+  confirmPassword: "",
+  newPassword: "",
+  confirmNewPassword: "",
 };
 
 export default function EmailAccountsDashboard() {
   const router = useRouter();
   const [accounts, setAccounts] = useState<EmailAccount[]>([]);
+  const [cpanelConfigured, setCpanelConfigured] = useState(false);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | EmailAccountStatus>("all");
@@ -51,6 +61,15 @@ export default function EmailAccountsDashboard() {
   const [instruction, setInstruction] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  const previewEmail = useMemo(() => {
+    if (!form.emailLocalPart.trim()) return "";
+    try {
+      return buildStaffEmail(form.emailLocalPart);
+    } catch {
+      return "";
+    }
+  }, [form.emailLocalPart]);
+
   const loadAccounts = useCallback(async () => {
     setLoading(true);
     try {
@@ -59,8 +78,12 @@ export default function EmailAccountsDashboard() {
         router.push("/admin/email-accounts/login");
         return;
       }
-      const data = (await res.json()) as { accounts?: EmailAccount[] };
+      const data = (await res.json()) as {
+        accounts?: EmailAccount[];
+        cpanelConfigured?: boolean;
+      };
       setAccounts(data.accounts ?? []);
+      setCpanelConfigured(Boolean(data.cpanelConfigured));
     } catch {
       setError("Failed to load email accounts.");
     } finally {
@@ -98,11 +121,15 @@ export default function EmailAccountsDashboard() {
     setEditingId(account.id);
     setForm({
       fullName: account.fullName,
-      email: account.email,
+      emailLocalPart: parseEmailLocalPart(account.email),
       role: account.role,
       department: account.department,
       status: account.status,
       notes: account.notes,
+      password: "",
+      confirmPassword: "",
+      newPassword: "",
+      confirmNewPassword: "",
     });
     setInstruction(null);
     setError(null);
@@ -115,29 +142,60 @@ export default function EmailAccountsDashboard() {
     setInstruction(null);
 
     try {
+      if (!editingId) {
+        if (!form.password || !form.confirmPassword) {
+          setError("Mailbox password and confirmation are required.");
+          return;
+        }
+        if (form.password !== form.confirmPassword) {
+          setError("Passwords do not match.");
+          return;
+        }
+      }
+
       const url = editingId
         ? `/api/mail/accounts/${editingId}`
         : "/api/mail/accounts";
       const method = editingId ? "PATCH" : "POST";
 
+      const payload = editingId
+        ? {
+            fullName: form.fullName,
+            role: form.role,
+            department: form.department,
+            status: form.status,
+            notes: form.notes,
+            newPassword: form.newPassword || undefined,
+            confirmNewPassword: form.confirmNewPassword || undefined,
+          }
+        : {
+            fullName: form.fullName,
+            emailLocalPart: form.emailLocalPart,
+            role: form.role,
+            department: form.department,
+            notes: form.notes,
+            password: form.password,
+            confirmPassword: form.confirmPassword,
+          };
+
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
       const data = (await res.json()) as {
         error?: string;
         provision?: { message?: string };
+        message?: string;
       };
 
       if (!res.ok) {
-        setError(data.error ?? "Save failed.");
+        setError(data.error ?? data.provision?.message ?? "Save failed.");
         return;
       }
 
-      if (data.provision?.message) {
-        setInstruction(data.provision.message);
-      }
+      const successMessage = data.provision?.message ?? data.message;
+      if (successMessage) setInstruction(successMessage);
 
       setShowForm(false);
       await loadAccounts();
@@ -149,8 +207,14 @@ export default function EmailAccountsDashboard() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this email account record?")) return;
-    await fetch(`/api/mail/accounts/${id}`, { method: "DELETE" });
+    if (!confirm("Delete this staff mailbox from HostGator and this dashboard?")) return;
+    const res = await fetch(`/api/mail/accounts/${id}`, { method: "DELETE" });
+    const data = (await res.json()) as { error?: string; message?: string };
+    if (!res.ok) {
+      setError(data.error ?? "Delete failed.");
+      return;
+    }
+    if (data.message) setInstruction(data.message);
     await loadAccounts();
   };
 
@@ -198,16 +262,42 @@ export default function EmailAccountsDashboard() {
       </header>
 
       <main className="container-custom px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          <strong>Manual HostGator workflow:</strong> When you add a staff email, the system
-          will show: &quot;Create this email inside HostGator cPanel → Email Accounts.&quot;
-          Mark the record <strong>Active</strong> after the mailbox exists in HostGator. This app
-          does not change DNS, MX, SPF, DKIM, or cPanel settings.
+        <div
+          className={`mb-6 rounded-2xl border p-4 text-sm ${
+            cpanelConfigured
+              ? "border-brand-green/30 bg-brand-green/5 text-brand-blue"
+              : "border-amber-200 bg-amber-50 text-amber-900"
+          }`}
+        >
+          {cpanelConfigured ? (
+            <p>
+              <strong>HostGator connected.</strong> New staff emails are created in cPanel
+              automatically with the password you set. Staff use that password at{" "}
+              <Link href="/mail" className="font-medium text-brand-green hover:underline">
+                /mail
+              </Link>
+              . Passwords are never stored in this dashboard.
+            </p>
+          ) : (
+            <p>
+              <strong>HostGator API not configured.</strong> Add{" "}
+              <code className="rounded bg-white/80 px-1">CPANEL_HOST</code>,{" "}
+              <code className="rounded bg-white/80 px-1">CPANEL_USERNAME</code>, and{" "}
+              <code className="rounded bg-white/80 px-1">CPANEL_API_TOKEN</code> on Vercel to
+              create mailboxes automatically. No DNS changes are made.
+            </p>
+          )}
         </div>
 
         {instruction && (
           <div className="mb-6 rounded-2xl border border-brand-green/30 bg-brand-green/5 p-4 text-sm text-brand-blue">
             {instruction}
+          </div>
+        )}
+
+        {error && !showForm && (
+          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            {error}
           </div>
         )}
 
@@ -356,26 +446,114 @@ export default function EmailAccountsDashboard() {
             )}
 
             <div className="space-y-4">
-              <Field label="Full name" value={form.fullName} onChange={(v) => setForm({ ...form, fullName: v })} />
               <Field
-                label="Email address"
-                value={form.email}
-                onChange={(v) => setForm({ ...form, email: v })}
-                placeholder={`staff@${mailConfig.mailDomain}`}
+                label="Full name"
+                value={form.fullName}
+                onChange={(v) => setForm({ ...form, fullName: v })}
               />
+
+              {editingId ? (
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-brand-blue">
+                    Email address
+                  </label>
+                  <div className="rounded-xl border border-border bg-section-alt px-4 py-2.5 font-mono text-sm text-brand-blue">
+                    {previewEmail || `${form.emailLocalPart}@${mailConfig.mailDomain}`}
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <label
+                    htmlFor="email-local-part"
+                    className="mb-1.5 block text-sm font-medium text-brand-blue"
+                  >
+                    Email username
+                  </label>
+                  <div className="flex overflow-hidden rounded-xl border border-border focus-within:border-brand-green focus-within:ring-2 focus-within:ring-brand-green/20">
+                    <input
+                      id="email-local-part"
+                      value={form.emailLocalPart}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          emailLocalPart: e.target.value.toLowerCase().replace(/\s/g, ""),
+                        })
+                      }
+                      placeholder="ayon"
+                      className="min-w-0 flex-1 px-4 py-2.5 text-sm outline-none"
+                    />
+                    <span className="flex items-center border-l border-border bg-section-alt px-4 text-sm text-muted">
+                      @{mailConfig.mailDomain}
+                    </span>
+                  </div>
+                  {previewEmail && (
+                    <p className="mt-1.5 text-xs text-brand-green">
+                      Will be created as <strong>{previewEmail}</strong>
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {!editingId ? (
+                <>
+                  <PasswordField
+                    label="Mailbox password"
+                    value={form.password}
+                    onChange={(v) => setForm({ ...form, password: v })}
+                    placeholder="Password staff will use at /mail"
+                  />
+                  <PasswordField
+                    label="Confirm password"
+                    value={form.confirmPassword}
+                    onChange={(v) => setForm({ ...form, confirmPassword: v })}
+                    placeholder="Re-enter password"
+                  />
+                  <p className="text-xs text-muted">
+                    This password is sent to HostGator to create the mailbox. It is{" "}
+                    <strong>not stored</strong> in this dashboard. Share it securely with the staff
+                    member.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <PasswordField
+                    label="New password (optional)"
+                    value={form.newPassword}
+                    onChange={(v) => setForm({ ...form, newPassword: v })}
+                    placeholder="Leave blank to keep current password"
+                  />
+                  <PasswordField
+                    label="Confirm new password"
+                    value={form.confirmNewPassword}
+                    onChange={(v) => setForm({ ...form, confirmNewPassword: v })}
+                    placeholder="Re-enter new password"
+                  />
+                </>
+              )}
+
               <Field label="Role" value={form.role} onChange={(v) => setForm({ ...form, role: v })} />
-              <Field label="Department" value={form.department} onChange={(v) => setForm({ ...form, department: v })} />
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-brand-blue">Status</label>
-                <select
-                  value={form.status}
-                  onChange={(e) => setForm({ ...form, status: e.target.value as EmailAccountStatus })}
-                  className="w-full rounded-xl border border-border px-4 py-2.5 text-sm outline-none focus:border-brand-green"
-                >
-                  <option value="inactive">Inactive (pending HostGator setup)</option>
-                  <option value="active">Active</option>
-                </select>
-              </div>
+              <Field
+                label="Department"
+                value={form.department}
+                onChange={(v) => setForm({ ...form, department: v })}
+              />
+
+              {editingId && (
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-brand-blue">Status</label>
+                  <select
+                    value={form.status}
+                    onChange={(e) =>
+                      setForm({ ...form, status: e.target.value as EmailAccountStatus })
+                    }
+                    className="w-full rounded-xl border border-border px-4 py-2.5 text-sm outline-none focus:border-brand-green"
+                  >
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </div>
+              )}
+
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-brand-blue">Notes</label>
                 <textarea
@@ -386,13 +564,6 @@ export default function EmailAccountsDashboard() {
                 />
               </div>
             </div>
-
-            {!editingId && (
-              <p className="mt-4 rounded-xl bg-section-alt p-3 text-xs text-muted">
-                After saving, create this email inside HostGator cPanel → Email Accounts,
-                then return here and mark it Active.
-              </p>
-            )}
 
             <div className="mt-6 flex justify-end gap-2">
               <button
@@ -409,7 +580,7 @@ export default function EmailAccountsDashboard() {
                 className="inline-flex items-center gap-2 rounded-xl bg-brand-blue px-5 py-2 text-sm font-semibold text-white hover:bg-brand-blue-light disabled:opacity-70"
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                Save
+                {editingId ? "Save changes" : "Create mailbox"}
               </button>
             </div>
           </div>
@@ -437,6 +608,32 @@ function Field({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
+        className="w-full rounded-xl border border-border px-4 py-2.5 text-sm outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
+      />
+    </div>
+  );
+}
+
+function PasswordField({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <div>
+      <label className="mb-1.5 block text-sm font-medium text-brand-blue">{label}</label>
+      <input
+        type="password"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        autoComplete="new-password"
         className="w-full rounded-xl border border-border px-4 py-2.5 text-sm outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
       />
     </div>

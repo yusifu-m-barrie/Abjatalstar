@@ -1,5 +1,10 @@
-import type { EmailAccount } from "@/lib/email-accounts/types";
-import type { CreateEmailAccountResult, EmailProvider } from "./types";
+import type { EmailAccountInput } from "@/lib/email-accounts/types";
+import type {
+  CreateEmailAccountResult,
+  EmailProvider,
+  ProvisionMailboxOptions,
+} from "./types";
+import { isCpanelConfigured } from "./cpanel-client";
 
 export class ManualEmailProvider implements EmailProvider {
   name = "manual" as const;
@@ -9,13 +14,28 @@ export class ManualEmailProvider implements EmailProvider {
   }
 
   async createAccount(
-    account: EmailAccount
+    input: EmailAccountInput,
+    options: ProvisionMailboxOptions
   ): Promise<CreateEmailAccountResult> {
+    if (!options.password) {
+      return {
+        success: false,
+        message: "Mailbox password is required.",
+      };
+    }
+
+    if (!isCpanelConfigured()) {
+      return {
+        success: false,
+        requiresManualSetup: true,
+        message: this.getSetupInstructions(input.email),
+      };
+    }
+
     return {
-      success: true,
-      account,
-      requiresManualSetup: true,
-      message: this.getSetupInstructions(account.email),
+      success: false,
+      message:
+        "Set EMAIL_PROVIDER=cpanel on Vercel to create HostGator mailboxes automatically.",
     };
   }
 }

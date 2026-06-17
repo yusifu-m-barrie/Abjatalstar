@@ -5,7 +5,13 @@ import {
   listEmailAccounts,
 } from "@/lib/email-accounts/store";
 import type { EmailAccountInput } from "@/lib/email-accounts/types";
+import {
+  buildStaffEmail,
+  isValidMailboxPassword,
+  normalizeEmailLocalPart,
+} from "@/lib/mail-email";
 import { getEmailProvider } from "@/lib/email-providers";
+import { isCpanelConfigured } from "@/lib/email-providers/cpanel-client";
 
 export const dynamic = "force-dynamic";
 
@@ -13,15 +19,14 @@ function unauthorized() {
   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 }
 
-function isValidEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
 export async function GET() {
   if (!(await isMailAdminAuthenticated())) return unauthorized();
 
   const accounts = await listEmailAccounts();
-  return NextResponse.json({ accounts });
+  return NextResponse.json({
+    accounts,
+    cpanelConfigured: isCpanelConfigured(),
+  });
 }
 
 export async function POST(request: NextRequest) {
@@ -31,16 +36,52 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const fullName =
       typeof body.fullName === "string" ? body.fullName.trim() : "";
-    const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+    const emailLocalPart =
+      typeof body.emailLocalPart === "string"
+        ? normalizeEmailLocalPart(body.emailLocalPart)
+        : "";
+    const password = typeof body.password === "string" ? body.password : "";
+    const confirmPassword =
+      typeof body.confirmPassword === "string" ? body.confirmPassword : "";
     const role = typeof body.role === "string" ? body.role.trim() : "";
     const department =
       typeof body.department === "string" ? body.department.trim() : "";
-    const status = body.status === "active" ? "active" : "inactive";
     const notes = typeof body.notes === "string" ? body.notes.trim() : "";
 
-    if (!fullName || !email || !isValidEmail(email)) {
+    if (!fullName || !emailLocalPart) {
       return NextResponse.json(
-        { error: "Full name and a valid email address are required." },
+        { error: "Full name and email username are required." },
+        { status: 400 }
+      );
+    }
+
+    if (!password || !confirmPassword) {
+      return NextResponse.json(
+        { error: "Mailbox password and confirmation are required." },
+        { status: 400 }
+      );
+    }
+
+    if (password !== confirmPassword) {
+      return NextResponse.json(
+        { error: "Passwords do not match." },
+        { status: 400 }
+      );
+    }
+
+    if (!isValidMailboxPassword(password)) {
+      return NextResponse.json(
+        { error: "Password must be at least 8 characters." },
+        { status: 400 }
+      );
+    }
+
+    let email: string;
+    try {
+      email = buildStaffEmail(emailLocalPart);
+    } catch (error) {
+      return NextResponse.json(
+        { error: error instanceof Error ? error.message : "Invalid email username." },
         { status: 400 }
       );
     }
@@ -50,13 +91,25 @@ export async function POST(request: NextRequest) {
       email,
       role,
       department,
-      status,
+      status: "inactive",
       notes,
     };
 
-    const account = await createEmailAccountRecord(input);
     const provider = getEmailProvider();
-    const provision = await provider.createAccount(account);
+    const provision = await provider.createAccount(input, { password });
+
+    if (!provision.success) {
+      return NextResponse.json(
+        { error: provision.message, provision },
+        { status: provision.requiresManualSetup ? 503 : 502 }
+      );
+    }
+
+    const account = await createEmailAccountRecord({
+      ...input,
+      status: "active",
+      notes: notes || "Created via AbjatalStar email admin and HostGator cPanel.",
+    });
 
     return NextResponse.json({
       account,
@@ -65,7 +118,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Create email account error:", error);
     return NextResponse.json(
-      { error: "Failed to create email account record." },
+      { error: "Failed to create email account." },
       { status: 500 }
     );
   }
