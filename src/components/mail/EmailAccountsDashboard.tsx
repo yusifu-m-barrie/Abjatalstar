@@ -199,9 +199,10 @@ export default function EmailAccountsDashboard() {
 
       <main className="container-custom px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          <strong>Manual HostGator workflow:</strong> This dashboard tracks staff mailboxes.
-          Create the actual mailbox in HostGator cPanel → Email Accounts, then mark it{" "}
-          <strong>Active</strong> here. No DNS or cPanel credentials are changed by this app.
+          <strong>Manual HostGator workflow:</strong> When you add a staff email, the system
+          will show: &quot;Create this email inside HostGator cPanel → Email Accounts.&quot;
+          Mark the record <strong>Active</strong> after the mailbox exists in HostGator. This app
+          does not change DNS, MX, SPF, DKIM, or cPanel settings.
         </div>
 
         {instruction && (
@@ -388,8 +389,8 @@ export default function EmailAccountsDashboard() {
 
             {!editingId && (
               <p className="mt-4 rounded-xl bg-section-alt p-3 text-xs text-muted">
-                After saving, create this mailbox in HostGator cPanel → Email Accounts, then
-                return here and mark it Active.
+                After saving, create this email inside HostGator cPanel → Email Accounts,
+                then return here and mark it Active.
               </p>
             )}
 

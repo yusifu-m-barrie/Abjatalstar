@@ -69,12 +69,64 @@ Password note:
 
 ---
 
+## Branded staff email (AbjatalStar Mail)
+
+Hybrid email portal — **no DNS or HostGator changes** from the app. Uses existing `@abjatalstar.com` mailboxes on HostGator/cPanel.
+
+### Live URLs
+
+| Page | URL |
+|------|-----|
+| Staff mail login | https://www.abjatalstar.com/mail |
+| Webmail gateway | https://abjatalstar.com/webmail → HostGator |
+| Email admin dashboard | https://www.abjatalstar.com/admin/email-accounts |
+
+### Environment variables (Vercel)
+
+| Variable | Purpose |
+|----------|---------|
+| `EMAIL_PROVIDER` | `manual` (default) or `cpanel` (scaffold only) |
+| `NEXT_PUBLIC_WEBMAIL_URL` | Branded gateway, e.g. `https://abjatalstar.com/webmail` |
+| `WEBMAIL_DESTINATION_URL` | Real HostGator webmail URL (server-only) |
+| `NEXT_PUBLIC_BRAND_NAME` | `AbjatalStar` |
+| `NEXT_PUBLIC_MAIL_DOMAIN` | `abjatalstar.com` |
+| `MAIL_ADMIN_PASSWORD` | Password for `/admin/email-accounts` |
+| `SANITY_API_TOKEN` | Persists staff email records in production |
+
+Optional: `NEXT_PUBLIC_WEBMAIL_DIRECT_URL` for the “Open Webmail Directly” button.
+
+### Staff login flow
+
+1. Staff opens `/mail` and enters `@abjatalstar.com` email + mailbox password.
+2. Password is **never stored** — only validated locally, then cleared.
+3. User is sent to `/webmail`, which redirects to HostGator webmail.
+4. Staff completes sign-in on HostGator (existing cPanel mailboxes).
+
+### Admin email workflow
+
+1. Open `/admin/email-accounts/login` → enter `MAIL_ADMIN_PASSWORD`.
+2. Add staff record (name, email, role, department).
+3. System shows: *Create this email inside HostGator cPanel → Email Accounts.*
+4. Create the mailbox in HostGator manually.
+5. Mark the record **Active** in the dashboard.
+
+### Provider architecture
+
+```
+src/lib/email-providers/
+  types.ts            — provider interface
+  manual-provider.ts  — default (in use)
+  cpanel-provider.ts — scaffold only, no live API calls
+```
+
+---
+
 ## Deploy (live site)
 
 **Live website:** https://www.abjatalstar.com  
 **Live CMS (Sanity Studio):** https://www.abjatalstar.com/admin
 
-Deploy the Next.js app on **Vercel or Netlify** and set these environment variables in the hosting dashboard:
+Deploy the Next.js app on **Vercel** and set these environment variables in the project dashboard:
 
 | Variable | Value |
 |----------|--------|

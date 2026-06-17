@@ -1,9 +1,16 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { ExternalLink, Loader2, Lock, Mail } from "lucide-react";
+import Link from "next/link";
+import { ExternalLink, Loader2, Lock, Mail, Shield } from "lucide-react";
 import { mailConfig } from "@/lib/mail-config";
 import MailLogo from "./MailLogo";
+
+function isValidStaffEmail(value: string): boolean {
+  const email = value.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return false;
+  return email.endsWith(`@${mailConfig.mailDomain}`);
+}
 
 export default function MailLoginForm() {
   const [email, setEmail] = useState("");
@@ -11,23 +18,32 @@ export default function MailLoginForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
 
-    if (!email.trim() || !password.trim()) {
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
+
+    if (!trimmedEmail || !trimmedPassword) {
       setError("Please enter your email address and password.");
+      return;
+    }
+
+    if (!isValidStaffEmail(trimmedEmail)) {
+      setError(`Please use your @${mailConfig.mailDomain} staff email address.`);
       return;
     }
 
     setLoading(true);
 
-    // Branded gateway — credentials are entered on HostGator webmail, not stored here.
+    // Branded gateway — password is never stored, sent to API, or placed in the URL.
     await new Promise((resolve) => setTimeout(resolve, 900));
 
     const webmailUrl = new URL(mailConfig.webmailUrl);
-    webmailUrl.searchParams.set("email", email.trim());
+    webmailUrl.searchParams.set("email", trimmedEmail.toLowerCase());
 
+    setPassword("");
     window.location.href = webmailUrl.toString();
   };
 
@@ -39,19 +55,31 @@ export default function MailLoginForm() {
         </div>
 
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold text-brand-blue">{mailConfig.brandName} Mail</h1>
+          <h1 className="text-2xl font-bold text-brand-blue sm:text-3xl">
+            {mailConfig.brandName} Mail
+          </h1>
           <p className="mt-2 text-sm text-muted">Secure staff email access</p>
+          <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-brand-green/30 bg-brand-green/5 px-3 py-1 text-xs font-medium text-brand-green">
+            <Shield className="h-3.5 w-3.5" />
+            Authorized staff only
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-5" noValidate>
           {error && (
-            <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <p
+              role="alert"
+              className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+            >
               {error}
             </p>
           )}
 
           <div>
-            <label htmlFor="mail-email" className="mb-1.5 block text-sm font-medium text-brand-blue">
+            <label
+              htmlFor="mail-email"
+              className="mb-1.5 block text-sm font-medium text-brand-blue"
+            >
               Email address
             </label>
             <div className="relative">
@@ -59,6 +87,7 @@ export default function MailLoginForm() {
               <input
                 id="mail-email"
                 type="email"
+                name="email"
                 autoComplete="username"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -69,7 +98,10 @@ export default function MailLoginForm() {
           </div>
 
           <div>
-            <label htmlFor="mail-password" className="mb-1.5 block text-sm font-medium text-brand-blue">
+            <label
+              htmlFor="mail-password"
+              className="mb-1.5 block text-sm font-medium text-brand-blue"
+            >
               Password
             </label>
             <div className="relative">
@@ -77,6 +109,7 @@ export default function MailLoginForm() {
               <input
                 id="mail-password"
                 type="password"
+                name="password"
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -87,14 +120,14 @@ export default function MailLoginForm() {
           </div>
 
           <p className="text-xs leading-relaxed text-muted">
-            Use the email address and password provided by {mailConfig.brandName} Admin.
-            Your password is not stored on this website.
+            Use the email address and password provided by AbjatalStar Admin. Your
+            password is not stored on this website.
           </p>
 
           <button
             type="submit"
             disabled={loading}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-blue px-6 py-3.5 text-sm font-semibold text-white transition-all hover:bg-brand-blue-light disabled:cursor-not-allowed disabled:opacity-70"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-blue px-6 py-3.5 text-sm font-semibold text-white transition-all hover:bg-brand-blue-light hover:shadow-lg hover:shadow-brand-blue/20 disabled:cursor-not-allowed disabled:opacity-70"
           >
             {loading ? (
               <>
@@ -109,11 +142,11 @@ export default function MailLoginForm() {
 
         <div className="mt-6 space-y-3 border-t border-border pt-6 text-center">
           <p className="text-xs text-muted">
-            Forgot your password? Contact your {mailConfig.brandName} administrator or use
-            HostGator webmail password recovery.
+            Forgot your password? Contact your AbjatalStar administrator or reset it
+            in HostGator cPanel → Email Accounts.
           </p>
           <a
-            href={mailConfig.webmailUrl}
+            href={mailConfig.webmailDirectUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 text-sm font-medium text-brand-green hover:underline"
@@ -122,6 +155,12 @@ export default function MailLoginForm() {
             <ExternalLink className="h-4 w-4" />
           </a>
         </div>
+
+        <p className="mt-6 text-center">
+          <Link href="/" className="text-xs text-muted hover:text-brand-blue">
+            ← Back to abjatalstar.com
+          </Link>
+        </p>
       </div>
     </div>
   );

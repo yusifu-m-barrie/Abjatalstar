@@ -5,11 +5,7 @@ export class ManualEmailProvider implements EmailProvider {
   name = "manual" as const;
 
   getSetupInstructions(email: string): string {
-    return [
-      `Create ${email} in HostGator cPanel → Email Accounts.`,
-      "Set a secure mailbox password and share it with the staff member through your internal process.",
-      "After the mailbox is live, mark the account as Active in this dashboard.",
-    ].join(" ");
+    return `Create this email inside HostGator cPanel → Email Accounts. (${email})`;
   }
 
   async createAccount(
