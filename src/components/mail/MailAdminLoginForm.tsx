@@ -54,6 +54,12 @@ export default function MailAdminLoginForm() {
         <p className="mt-2 text-xs text-muted">
           Separate from Sanity CMS. Sign in with your mail admin email and password.
         </p>
+        <p className="mt-2 rounded-xl bg-section-alt px-3 py-2 text-left text-xs text-muted">
+          <strong className="text-brand-blue">Accounts:</strong> Super Admin{" "}
+          <code className="text-[11px]">super@abjatalstar.com</code> · Admin{" "}
+          <code className="text-[11px]">admin@abjatalstar.com</code> · Editor{" "}
+          <code className="text-[11px]">editor@abjatalstar.com</code>
+        </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
