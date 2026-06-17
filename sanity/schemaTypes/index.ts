@@ -23,6 +23,7 @@ import {
   siteSettings,
 } from "./documents";
 import { staffEmailAccount } from "./staffEmailAccount";
+import { staffEmailActivityLog } from "./staffEmailActivityLog";
 
 export const schemaTypes = [
   seo,
@@ -46,4 +47,5 @@ export const schemaTypes = [
   aboutPage,
   contactPage,
   staffEmailAccount,
+  staffEmailActivityLog,
 ];

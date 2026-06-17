@@ -10,7 +10,7 @@ export const mailConfig = {
     process.env.NEXT_PUBLIC_WEBMAIL_URL ??
     "https://abjatalstar.com/webmail",
   emailProvider: (process.env.EMAIL_PROVIDER ?? "manual") as "manual" | "cpanel",
-  logoPath: process.env.NEXT_PUBLIC_BRAND_LOGO_PATH,
+  logoPath: process.env.NEXT_PUBLIC_BRAND_LOGO_PATH ?? "/logo.png",
   fallbackLogoPath: process.env.NEXT_PUBLIC_BRAND_FALLBACK_LOGO_PATH,
 };
 

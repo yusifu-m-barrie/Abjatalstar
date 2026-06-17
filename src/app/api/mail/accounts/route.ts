@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isMailAdminAuthenticated } from "@/lib/mail-admin-auth";
+import { requireMailPermission } from "@/lib/mail-admin-auth";
+import { logEmailActivity } from "@/lib/email-accounts/activity-log";
 import {
   createEmailAccountRecord,
   listEmailAccounts,
@@ -12,12 +13,9 @@ import {
 } from "@/lib/mail-email";
 import { getEmailProvider } from "@/lib/email-providers";
 import { isCpanelConfigured } from "@/lib/email-providers/cpanel-client";
+import { getHostgatorPublicStatus } from "@/lib/mail-hostgator-status";
 
 export const dynamic = "force-dynamic";
-
-function unauthorized() {
-  return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-}
 
 function shouldFallbackToInactive(message: string): boolean {
   const normalized = message.toLowerCase();
@@ -31,17 +29,26 @@ function shouldFallbackToInactive(message: string): boolean {
 }
 
 export async function GET() {
-  if (!(await isMailAdminAuthenticated())) return unauthorized();
+  const auth = await requireMailPermission("read_accounts");
+  if (auth.error) return auth.error;
 
   const accounts = await listEmailAccounts();
+  const hostgator = getHostgatorPublicStatus();
+
   return NextResponse.json({
     accounts,
-    cpanelConfigured: isCpanelConfigured(),
+    hostgatorConnected: hostgator.hostgatorConnected,
+    emailProvider: hostgator.emailProvider,
+    user: {
+      email: auth.session.email,
+      role: auth.session.role,
+    },
   });
 }
 
 export async function POST(request: NextRequest) {
-  if (!(await isMailAdminAuthenticated())) return unauthorized();
+  const auth = await requireMailPermission("write_accounts");
+  if (auth.error) return auth.error;
 
   try {
     const body = await request.json();
@@ -66,25 +73,42 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!password || !confirmPassword) {
-      return NextResponse.json(
-        { error: "Mailbox password and confirmation are required." },
-        { status: 400 }
-      );
-    }
+    const cpanelReady = isCpanelConfigured();
 
-    if (password !== confirmPassword) {
-      return NextResponse.json(
-        { error: "Passwords do not match." },
-        { status: 400 }
-      );
-    }
+    if (cpanelReady) {
+      if (!password || !confirmPassword) {
+        return NextResponse.json(
+          { error: "Mailbox password and confirmation are required." },
+          { status: 400 }
+        );
+      }
 
-    if (!isValidMailboxPassword(password)) {
-      return NextResponse.json(
-        { error: "Password must be at least 8 characters." },
-        { status: 400 }
-      );
+      if (password !== confirmPassword) {
+        return NextResponse.json(
+          { error: "Passwords do not match." },
+          { status: 400 }
+        );
+      }
+
+      if (!isValidMailboxPassword(password)) {
+        return NextResponse.json(
+          { error: "Password must be at least 8 characters." },
+          { status: 400 }
+        );
+      }
+    } else if (password || confirmPassword) {
+      if (password !== confirmPassword) {
+        return NextResponse.json(
+          { error: "Passwords do not match." },
+          { status: 400 }
+        );
+      }
+      if (password && !isValidMailboxPassword(password)) {
+        return NextResponse.json(
+          { error: "Password must be at least 8 characters." },
+          { status: 400 }
+        );
+      }
     }
 
     let email: string;
@@ -107,30 +131,50 @@ export async function POST(request: NextRequest) {
     };
 
     const provider = getEmailProvider();
-    const provision = await provider.createAccount(input, { password });
+    const provision = await provider.createAccount(input, {
+      password: password || undefined,
+    });
 
-    if (!provision.success && (provision.requiresManualSetup || shouldFallbackToInactive(provision.message))) {
+    if (
+      !provision.success &&
+      (provision.requiresManualSetup || shouldFallbackToInactive(provision.message))
+    ) {
       const account = await createEmailAccountRecord({
         ...input,
         status: "inactive",
         notes:
           notes ||
-          `Pending HostGator mailbox for ${email}. Add CPANEL_* env vars for auto-create, or create manually in cPanel.`,
+          `Pending HostGator mailbox for ${email}. Create in cPanel → Email Accounts, then mark Active.`,
       });
+
+      await logEmailActivity({
+        action: "created",
+        accountId: account.id,
+        accountEmail: account.email,
+        accountName: account.fullName,
+        performedBy: auth.session.email,
+        performedByRole: auth.session.role,
+        details: "Saved as inactive — HostGator mailbox pending.",
+      });
+
+      const manualMessage = cpanelReady
+        ? `Staff record saved as Inactive. HostGator mailbox creation failed (${provision.message}). Edit this staff member and set a password to retry, or create ${email} manually in HostGator cPanel.`
+        : `Staff record saved as Inactive. Create ${email} inside HostGator cPanel → Email Accounts, then return here and mark it Active.`;
 
       return NextResponse.json({
         account,
         pendingSetup: true,
-        provision: {
-          ...provision,
-          message: `Staff record saved as Inactive. HostGator mailbox creation failed right now (${provision.message}). Check CPANEL_HOST/CPANEL_USERNAME/CPANEL_API_TOKEN, then edit this staff member and set a password to create the mailbox. Until then, create ${email} manually in HostGator cPanel with the password you chose.`,
-        },
+        provision: { ...provision, message: manualMessage },
       });
     }
 
     if (!provision.success) {
       return NextResponse.json(
-        { error: provision.message, provision },
+        {
+          error:
+            provision.message ||
+            "HostGator mailbox creation failed. Staff record was not saved.",
+        },
         { status: 502 }
       );
     }
@@ -141,14 +185,21 @@ export async function POST(request: NextRequest) {
       notes: notes || "Created via AbjatalStar email admin and HostGator cPanel.",
     });
 
-    return NextResponse.json({
-      account,
-      provision,
+    await logEmailActivity({
+      action: "created",
+      accountId: account.id,
+      accountEmail: account.email,
+      accountName: account.fullName,
+      performedBy: auth.session.email,
+      performedByRole: auth.session.role,
+      details: "Mailbox created in HostGator and marked active.",
     });
+
+    return NextResponse.json({ account, provision });
   } catch (error) {
     console.error("Create email account error:", error);
     return NextResponse.json(
-      { error: "Failed to create email account." },
+      { error: "Failed to create email account. Please try again." },
       { status: 500 }
     );
   }

@@ -18,9 +18,16 @@ export class ManualEmailProvider implements EmailProvider {
     options: ProvisionMailboxOptions
   ): Promise<CreateEmailAccountResult> {
     if (!options.password) {
+      if (!isCpanelConfigured()) {
+        return {
+          success: false,
+          requiresManualSetup: true,
+          message: this.getSetupInstructions(input.email),
+        };
+      }
       return {
         success: false,
-        message: "Mailbox password is required.",
+        message: "Mailbox password is required to create the HostGator email account.",
       };
     }
 

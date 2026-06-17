@@ -29,9 +29,8 @@ export default function MailPage() {
       <div className="relative flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center px-4 py-12">
         <MailLoginForm />
         <p className="mt-8 max-w-md text-center text-xs text-muted">
-          © {new Date().getFullYear()} {mailConfig.brandName}. Secure email gateway
-          for authorized staff only. Mail is hosted on HostGator — this portal does
-          not change your DNS or mailbox settings.
+          © {new Date().getFullYear()} {mailConfig.brandName}. Secure branded gateway to staff
+          webmail on HostGator. This portal does not change DNS or mailbox settings.
         </p>
       </div>
     </div>

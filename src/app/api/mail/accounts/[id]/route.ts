@@ -1,25 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isMailAdminAuthenticated } from "@/lib/mail-admin-auth";
+import { requireMailPermission } from "@/lib/mail-admin-auth";
+import { logEmailActivity } from "@/lib/email-accounts/activity-log";
 import {
   deleteEmailAccountRecord,
   getEmailAccount,
   updateEmailAccountRecord,
 } from "@/lib/email-accounts/store";
+import type { EmailAccountStatus } from "@/lib/email-accounts/types";
 import { isValidMailboxPassword } from "@/lib/mail-email";
 import { getCpanelEmailProvider } from "@/lib/email-providers";
 import { isCpanelConfigured } from "@/lib/email-providers/cpanel-client";
 
 export const dynamic = "force-dynamic";
 
-function unauthorized() {
-  return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-}
-
 export async function GET(
   _request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
-  if (!(await isMailAdminAuthenticated())) return unauthorized();
+  const auth = await requireMailPermission("read_accounts");
+  if (auth.error) return auth.error;
 
   const { id } = await context.params;
   const account = await getEmailAccount(id);
@@ -33,7 +32,8 @@ export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
-  if (!(await isMailAdminAuthenticated())) return unauthorized();
+  const auth = await requireMailPermission("write_accounts");
+  if (auth.error) return auth.error;
 
   try {
     const { id } = await context.params;
@@ -49,7 +49,9 @@ export async function PATCH(
     if (typeof body.fullName === "string") update.fullName = body.fullName.trim();
     if (typeof body.role === "string") update.role = body.role.trim();
     if (typeof body.department === "string") update.department = body.department.trim();
-    if (body.status === "active" || body.status === "inactive") update.status = body.status;
+    if (body.status === "active" || body.status === "inactive") {
+      update.status = body.status;
+    }
     if (typeof body.notes === "string") update.notes = body.notes.trim();
 
     const newPassword = typeof body.newPassword === "string" ? body.newPassword : "";
@@ -71,7 +73,7 @@ export async function PATCH(
         return NextResponse.json(
           {
             error:
-              "HostGator API is not configured. Add CPANEL_HOST, CPANEL_USERNAME, and CPANEL_API_TOKEN to your .env or Vercel.",
+              "HostGator API is not connected. Mailbox passwords can only be set when cPanel API is configured server-side.",
           },
           { status: 503 }
         );
@@ -111,11 +113,36 @@ export async function PATCH(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
+    const previousStatus = existing.status;
+    const nextStatus = (update.status as EmailAccountStatus | undefined) ?? previousStatus;
+
+    if (previousStatus !== nextStatus) {
+      await logEmailActivity({
+        action: nextStatus === "active" ? "activated" : "deactivated",
+        accountId: account.id,
+        accountEmail: account.email,
+        accountName: account.fullName,
+        performedBy: auth.session.email,
+        performedByRole: auth.session.role,
+        details: `Status changed from ${previousStatus} to ${nextStatus}.`,
+      });
+    } else {
+      await logEmailActivity({
+        action: "updated",
+        accountId: account.id,
+        accountEmail: account.email,
+        accountName: account.fullName,
+        performedBy: auth.session.email,
+        performedByRole: auth.session.role,
+        details: passwordMessage ? "Record updated and mailbox password changed in HostGator." : "Record updated.",
+      });
+    }
+
     return NextResponse.json({ account, message: passwordMessage });
   } catch (error) {
     console.error("Update email account error:", error);
     return NextResponse.json(
-      { error: "Failed to update email account." },
+      { error: "Failed to update email account. Please try again." },
       { status: 500 }
     );
   }
@@ -125,7 +152,8 @@ export async function DELETE(
   _request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
-  if (!(await isMailAdminAuthenticated())) return unauthorized();
+  const auth = await requireMailPermission("delete_accounts");
+  if (auth.error) return auth.error;
 
   const { id } = await context.params;
   const existing = await getEmailAccount(id);
@@ -137,7 +165,14 @@ export async function DELETE(
   if (isCpanelConfigured()) {
     const removal = await getCpanelEmailProvider().deleteMailbox(existing.email);
     if (!removal.success) {
-      return NextResponse.json({ error: removal.message }, { status: 502 });
+      return NextResponse.json(
+        {
+          error:
+            removal.message ||
+            "Failed to delete mailbox from HostGator. The dashboard record was not removed.",
+        },
+        { status: 502 }
+      );
     }
     removalMessage = removal.message;
   }
@@ -146,6 +181,18 @@ export async function DELETE(
   if (!deleted) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
+
+  await logEmailActivity({
+    action: "deleted",
+    accountId: existing.id,
+    accountEmail: existing.email,
+    accountName: existing.fullName,
+    performedBy: auth.session.email,
+    performedByRole: auth.session.role,
+    details: isCpanelConfigured()
+      ? "Mailbox removed from HostGator and dashboard record deleted."
+      : "Dashboard record deleted.",
+  });
 
   return NextResponse.json({ success: true, message: removalMessage });
 }

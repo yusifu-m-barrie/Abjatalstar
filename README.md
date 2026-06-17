@@ -71,58 +71,91 @@ Password note:
 
 ## Branded staff email (AbjatalStar Mail)
 
-Hybrid email portal — creates `@abjatalstar.com` mailboxes in HostGator/cPanel when the admin adds staff (no DNS changes from the app).
+Hybrid branded email portal for `@abjatalstar.com` staff. **No DNS changes** are made from this app — it uses existing HostGator/cPanel mailboxes.
+
+Sanity is used only for **website content** and **staff email record storage** (plus activity logs). Mail admin login is **separate** from Sanity CMS at `/admin`.
 
 ### Live URLs
 
 | Page | URL |
 |------|-----|
-| Staff mail login | https://www.abjatalstar.com/mail |
-| Webmail gateway | https://abjatalstar.com/webmail → HostGator |
+| Staff mail login (branded gateway) | https://www.abjatalstar.com/mail |
+| Webmail redirect | https://abjatalstar.com/webmail → HostGator |
 | Email admin dashboard | https://www.abjatalstar.com/admin/email-accounts |
 
-### Environment variables (Vercel + local `.env`)
+### What is stored vs not stored
+
+| Data | Stored? | Where |
+|------|---------|--------|
+| Staff mailbox records (name, email, role, status) | Yes | Sanity or local JSON |
+| Activity logs (who created/edited/deactivated/deleted) | Yes | Sanity or local JSON |
+| Staff mailbox passwords | **Never** | Sent to HostGator API only, then discarded |
+| cPanel API token / username | **Never in browser** | Server env vars only (`CPANEL_*`) |
+| Mail admin passwords | **Never in code** | Server env vars only (`MAIL_*_PASSWORD`) |
+
+### Staff login flow (`/mail`)
+
+1. Staff opens `/mail` — a **secure branded gateway** to staff webmail.
+2. They enter `@abjatalstar.com` email + mailbox password.
+3. The page validates input, shows a loading state, clears the password from memory, and redirects to `/webmail`.
+4. `/webmail` redirects to HostGator webmail (`WEBMAIL_DESTINATION_URL`, e.g. `https://abjatalstar.com:2096`).
+5. Staff complete sign-in on HostGator. **Passwords are never stored, logged, or saved** by this site.
+
+### Admin roles (`/admin/email-accounts`)
+
+Mail dashboard auth is **not** Sanity. Sign in with role email + password:
+
+| Role | Permissions |
+|------|-------------|
+| **Super Admin** | Full access, view activity logs, view HostGator API **status** (not credentials), manage server-side cPanel config on Vercel |
+| **Admin** | Create/edit/deactivate/delete staff mailboxes, view activity logs — **cannot** see cPanel token or credentials |
+| **Staff / Editor** | Read-only staff email list |
+
+### Manual mode (default)
+
+Set `EMAIL_PROVIDER=manual` (or leave unset). No `CPANEL_*` required.
+
+1. Admin signs in at `/admin/email-accounts/login`.
+2. Adds staff record (name, username → `ayon@abjatalstar.com`, role, department).
+3. Record saves as **Inactive** with instruction to create in HostGator cPanel → Email Accounts.
+4. Admin creates mailbox in HostGator manually, then marks record **Active** in dashboard.
+
+### cPanel API mode (optional)
+
+When `CPANEL_HOST`, `CPANEL_USERNAME`, and `CPANEL_API_TOKEN` are set server-side:
+
+1. Admin adds staff with mailbox password.
+2. App creates mailbox in HostGator via cPanel API.
+3. Record saves as **Active**.
+4. Password is sent to HostGator only — **not stored** in dashboard or Sanity.
+5. If HostGator API fails, record still saves as **Inactive** with a clear error message.
+
+### Environment variables
 
 | Variable | Purpose |
 |----------|---------|
-| `EMAIL_PROVIDER` | `cpanel` (recommended) or `manual` |
-| `CPANEL_HOST` | e.g. `abjatalstar.com` |
-| `CPANEL_USERNAME` | cPanel username |
-| `CPANEL_API_TOKEN` | cPanel → Security → API Tokens |
+| `EMAIL_PROVIDER` | `manual` (default) or `cpanel` |
+| `MAIL_SUPER_ADMIN_EMAIL` / `MAIL_SUPER_ADMIN_PASSWORD` | Super Admin login |
+| `MAIL_ADMIN_EMAIL` / `MAIL_ADMIN_PASSWORD` | Admin login |
+| `MAIL_EDITOR_EMAIL` / `MAIL_EDITOR_PASSWORD` | Staff/Editor read-only login |
+| `CPANEL_HOST`, `CPANEL_USERNAME`, `CPANEL_API_TOKEN` | **Server-only** HostGator API (never exposed to browser) |
 | `NEXT_PUBLIC_WEBMAIL_URL` | Branded gateway, e.g. `https://abjatalstar.com/webmail` |
-| `WEBMAIL_DESTINATION_URL` | HostGator webmail URL, e.g. `https://abjatalstar.com:2096` (from cPanel → Access Webmail) |
-| `NEXT_PUBLIC_WEBMAIL_DIRECT_URL` | Same HostGator URL for the direct webmail button on `/mail` |
+| `WEBMAIL_DESTINATION_URL` | HostGator webmail URL, e.g. `https://abjatalstar.com:2096` |
+| `NEXT_PUBLIC_WEBMAIL_DIRECT_URL` | Direct webmail button on `/mail` |
 | `NEXT_PUBLIC_BRAND_NAME` | `AbjatalStar` |
 | `NEXT_PUBLIC_MAIL_DOMAIN` | `abjatalstar.com` |
-| `MAIL_ADMIN_PASSWORD` | Password for `/admin/email-accounts` |
-| `SANITY_API_TOKEN` | Persists staff email records in production |
-
-Optional: `NEXT_PUBLIC_WEBMAIL_DIRECT_URL` for the “Open Webmail Directly” button.
-
-When `CPANEL_HOST`, `CPANEL_USERNAME`, and `CPANEL_API_TOKEN` are set, the dashboard shows **HostGator connected** and creates mailboxes automatically.
-
-### Staff login flow
-
-1. Staff opens `/mail` and enters `@abjatalstar.com` email + mailbox password.
-2. Password is **never stored** on the site — staff sign in on HostGator webmail.
-3. User is sent to `/webmail`, which redirects to HostGator webmail.
-
-### Admin email workflow
-
-1. Open `/admin/email-accounts/login` → enter `MAIL_ADMIN_PASSWORD`.
-2. Click **Add Staff Email** → enter name, username (e.g. `ayon` → `ayon@abjatalstar.com`), and **mailbox password**.
-3. The app creates the mailbox in HostGator via cPanel API and saves the staff record as **Active**.
-4. Share the password securely with the staff member — it is not stored in the dashboard.
-5. To reset a password, edit the staff record and set a new password (updates HostGator).
+| `SANITY_API_TOKEN` | Persists staff records + activity logs in production |
 
 ### Provider architecture
 
 ```
 src/lib/email-providers/
   types.ts            — provider interface
-  manual-provider.ts  — fallback when cPanel API is not configured
+  manual-provider.ts  — default when cPanel API is not configured
   cpanel-provider.ts  — HostGator mailbox create / password / delete
-  cpanel-client.ts    — cPanel UAPI calls
+  cpanel-client.ts    — cPanel UAPI calls (server-only)
+src/lib/mail-admin-roles.ts   — Super Admin / Admin / Editor permissions
+src/lib/email-accounts/activity-log.ts — audit trail
 ```
 
 ---

@@ -58,7 +58,11 @@ export default function MailLoginForm() {
           <h1 className="text-2xl font-bold text-brand-blue sm:text-3xl">
             {mailConfig.brandName} Mail
           </h1>
-          <p className="mt-2 text-sm text-muted">Secure staff email access</p>
+          <p className="mt-2 text-sm text-muted">Secure branded gateway to staff webmail</p>
+          <p className="mx-auto mt-3 max-w-sm text-xs leading-relaxed text-muted">
+            This page is a secure AbjatalStar-branded entry point. You will be redirected to
+            HostGator webmail to complete sign-in. This site does not store your mailbox password.
+          </p>
           <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-brand-green/30 bg-brand-green/5 px-3 py-1 text-xs font-medium text-brand-green">
             <Shield className="h-3.5 w-3.5" />
             Authorized staff only

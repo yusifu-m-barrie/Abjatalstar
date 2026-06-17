@@ -1,13 +1,14 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { Loader2, Lock, Shield } from "lucide-react";
+import { Loader2, Lock, Mail, Shield } from "lucide-react";
 import { useRouter } from "next/navigation";
 import MailLogo from "@/components/mail/MailLogo";
 import { mailConfig } from "@/lib/mail-config";
 
 export default function MailAdminLoginForm() {
   const router = useRouter();
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +22,7 @@ export default function MailAdminLoginForm() {
       const res = await fetch("/api/mail/admin/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ email, password }),
       });
       const data = (await res.json()) as { error?: string };
       if (!res.ok) {
@@ -50,6 +51,9 @@ export default function MailAdminLoginForm() {
         <p className="mt-1 text-sm text-muted">
           Manage {mailConfig.brandName} staff mailbox records
         </p>
+        <p className="mt-2 text-xs text-muted">
+          Separate from Sanity CMS. Sign in with your mail admin email and password.
+        </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -59,8 +63,25 @@ export default function MailAdminLoginForm() {
           </p>
         )}
         <div>
+          <label htmlFor="admin-email" className="mb-1.5 block text-sm font-medium text-brand-blue">
+            Admin email
+          </label>
+          <div className="relative">
+            <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+            <input
+              id="admin-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full rounded-xl border border-border py-3 pl-10 pr-4 text-sm outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
+              placeholder="admin@abjatalstar.com"
+              required
+            />
+          </div>
+        </div>
+        <div>
           <label htmlFor="admin-password" className="mb-1.5 block text-sm font-medium text-brand-blue">
-            Admin password
+            Password
           </label>
           <div className="relative">
             <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
@@ -70,7 +91,7 @@ export default function MailAdminLoginForm() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full rounded-xl border border-border py-3 pl-10 pr-4 text-sm outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
-              placeholder="Enter mail admin password"
+              placeholder="Enter your admin password"
               required
             />
           </div>
