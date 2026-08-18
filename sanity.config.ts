@@ -23,6 +23,16 @@ export default defineConfig({
   dataset,
   apiVersion,
   basePath: "/admin",
+  auth: {
+    providers: (prev) => {
+      const google = prev.find((provider) => provider.name === "google");
+      if (!google) return prev;
+      return [
+        { ...google, title: "Continue with Google" },
+        ...prev.filter((provider) => provider.name !== "google"),
+      ];
+    },
+  },
   plugins: [
     structureTool({ structure }),
   ],

@@ -321,7 +321,10 @@ export default function InviteEditorTool() {
         </button>
 
         <p style={{ color: "#64748b", fontSize: 13, margin: "10px 0 0" }}>
-          Sanity emails them a link. After they accept, they sign in at{" "}
+          Copy the invite link from Sanity Members (not an old email). After they
+          accept, they open{" "}
+          <a href="/join">{siteUrl.replace(/\/$/, "")}/join</a> and sign in with
+          the same Gmail. That page sends them to{" "}
           <a href="/admin">{siteUrl.replace(/\/$/, "")}/admin</a>.
         </p>
       </form>
