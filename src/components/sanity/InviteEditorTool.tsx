@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useClient, useProjectId } from "sanity";
 import { apiVersion } from "../../../sanity/env";
 
@@ -126,6 +126,16 @@ function requestErrorMessage(error: unknown): string {
 export default function InviteEditorTool() {
   const client = useClient({ apiVersion });
   const projectId = useProjectId();
+  const accessClient = useMemo(
+    () =>
+      client.withConfig({
+        apiVersion: ACCESS_API_VERSION,
+        useCdn: false,
+        useProjectHostname: false,
+        withCredentials: true,
+      }),
+    [client]
+  );
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -140,23 +150,15 @@ export default function InviteEditorTool() {
   );
   const [siteUrl, setSiteUrl] = useState("https://www.abjatalstar.com");
 
-  const accessUrl = useCallback(
-    (path: string) =>
-      `https://api.sanity.io/v${ACCESS_API_VERSION}/access/project/${projectId}${path}`,
-    [projectId]
-  );
-
   const sanityRequest = useCallback(
-    async <T,>(url: string, method: string, body?: unknown): Promise<T> => {
-      return client.request<T>({
-        url,
+    async <T,>(path: string, method: string, body?: unknown): Promise<T> => {
+      return accessClient.request<T>({
+        uri: `/access/project/${projectId}${path}`,
         method,
         body,
-        withCredentials: true,
-        useGlobalApi: true,
       });
     },
-    [client]
+    [accessClient, projectId]
   );
 
   const loadViaSanityClient = useCallback(async (): Promise<boolean> => {
@@ -171,7 +173,7 @@ export default function InviteEditorTool() {
           };
           memberships?: Array<{ roleNames?: string[] }>;
         }>;
-      }>(accessUrl("/users?limit=100"), "GET"),
+      }>("/users?limit=100", "GET"),
       sanityRequest<{
         data?: Array<{
           id: string;
@@ -180,7 +182,7 @@ export default function InviteEditorTool() {
           status?: string;
           createdAt?: string;
         }>;
-      }>(accessUrl("/invites?status=pending&limit=100"), "GET"),
+      }>("/invites?status=pending&limit=100", "GET"),
     ]);
 
     if (usersRes.status !== "fulfilled") return false;
@@ -212,7 +214,7 @@ export default function InviteEditorTool() {
     }
 
     return true;
-  }, [accessUrl, sanityRequest]);
+  }, [sanityRequest]);
 
   const loadViaApi = useCallback(async (): Promise<boolean> => {
     const token = await resolveStudioToken(client, projectId);
@@ -258,19 +260,17 @@ export default function InviteEditorTool() {
       email?: string;
       role?: string;
       status?: string;
-    }>(accessUrl("/invites"), "POST", {
+    }>("/invites", "POST", {
       email: editorEmail,
       role: EDITOR_ROLE,
     });
   };
 
   const inviteViaLegacyApi = async (editorEmail: string) => {
-    return client.request<{ id?: string; email?: string; role?: string }>({
+    return accessClient.request<{ id?: string; email?: string; role?: string }>({
       uri: `/invitations/project/${projectId}`,
       method: "POST",
       body: { email: editorEmail, role: EDITOR_ROLE },
-      useGlobalApi: true,
-      withCredentials: true,
     });
   };
 
