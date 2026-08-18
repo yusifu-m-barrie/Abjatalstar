@@ -1,9 +1,17 @@
 import { projectId } from "../../sanity/env";
 
-const EDITOR_INVITE_ROLE = "editor";
+export const EDITOR_INVITE_ROLE = "editor";
 
 const ACCESS_API = "https://api.sanity.io/v2025-07-11";
 const LEGACY_API = "https://api.sanity.io/v2021-06-07";
+
+export type SanityRole = {
+  name: string;
+  title: string;
+  description?: string;
+  canEditWebsite: boolean;
+  isFullAdmin: boolean;
+};
 
 export type SanityMember = {
   id: string;
@@ -32,6 +40,13 @@ function accessUrl(path: string): string {
     throw new Error("Sanity project ID is not configured.");
   }
   return `${ACCESS_API}/access/project/${projectId}${path}`;
+}
+
+function getManagementToken(): string | undefined {
+  const token =
+    process.env.SANITY_MANAGEMENT_TOKEN?.trim() ||
+    process.env.SANITY_API_TOKEN?.trim();
+  return token || undefined;
 }
 
 async function readErrorMessage(response: Response): Promise<string> {
@@ -81,6 +96,55 @@ export function isAdminRoleList(roles: string[]): boolean {
   );
 }
 
+export function isWebsiteEditorRole(role: string): boolean {
+  return role === "editor" || role === "staffEditor" || role === "contributor";
+}
+
+export function roleMeta(name: string, title?: string, description?: string): SanityRole {
+  const isFullAdmin = name === "administrator" || name === "admin" || name === "mainAdmin";
+  const canEditWebsite =
+    isFullAdmin ||
+    name === "editor" ||
+    name === "staffEditor" ||
+    name === "contributor" ||
+    name === "developer";
+
+  return {
+    name,
+    title: title ?? name,
+    description,
+    canEditWebsite,
+    isFullAdmin,
+  };
+}
+
+export async function listSanityRoles(token: string): Promise<SanityRole[]> {
+  const result = await sanityAccessFetch<{
+    data?: Array<{
+      name?: string;
+      title?: string;
+      description?: string;
+      appliesToUsers?: boolean;
+    }>;
+  }>(token, "/roles?limit=100");
+
+  if (result.ok) {
+    return (result.data.data ?? [])
+      .filter((role) => role.appliesToUsers !== false && role.name)
+      .map((role) => roleMeta(role.name!, role.title, role.description));
+  }
+
+  // Free plan fallback when roles endpoint is unavailable.
+  return [
+    roleMeta(
+      "administrator",
+      "Administrator",
+      "Full project access including members, tokens, and all content."
+    ),
+    roleMeta("viewer", "Viewer", "Read-only access. Cannot edit or publish website content."),
+  ];
+}
+
 export async function requireSanityAdmin(
   token: string
 ): Promise<{ ok: true } | { ok: false; status: number; message: string }> {
@@ -100,7 +164,7 @@ export async function requireSanityAdmin(
 
   const users = await sanityAccessFetch<{
     data?: Array<{
-      profile?: { isCurrentUser?: boolean };
+      profile?: { isCurrentUser?: boolean; email?: string };
       memberships?: Array<{ roleNames?: string[] }>;
     }>;
   }>(token, "/users?limit=100");
@@ -157,6 +221,35 @@ export async function requireSanityAdmin(
   };
 }
 
+export async function requireAdminEmail(
+  adminEmail: string,
+  token: string
+): Promise<{ ok: true } | { ok: false; status: number; message: string }> {
+  const normalized = adminEmail.trim().toLowerCase();
+  if (!normalized) {
+    return {
+      ok: false,
+      status: 401,
+      message: "Sign in to Sanity Studio as an administrator first.",
+    };
+  }
+
+  const members = await listSanityMembers(token);
+  const match = members.find(
+    (member) => member.email.toLowerCase() === normalized
+  );
+
+  if (!match || !isAdminRoleList(match.roles)) {
+    return {
+      ok: false,
+      status: 403,
+      message: "Only a Sanity administrator can invite members.",
+    };
+  }
+
+  return { ok: true };
+}
+
 export async function listSanityMembers(token: string): Promise<SanityMember[]> {
   const result = await sanityAccessFetch<{
     data?: Array<{
@@ -210,10 +303,42 @@ export async function listSanityInvites(token: string): Promise<SanityInvite[]> 
   }));
 }
 
-export async function inviteSanityEditor(
+function formatInviteError(message: string, availableRoles: SanityRole[]): Error {
+  const lower = message.toLowerCase();
+  const hasEditor = availableRoles.some((role) => role.name === "editor");
+
+  if (!hasEditor) {
+    return Object.assign(
+      new Error(
+        "Your Sanity project is on the Free plan, which only includes Administrator and Viewer roles — not Editor. Upgrade to Growth ($15/seat/month) to invite website editors without full admin access, or invite as Administrator knowing they will have full Sanity project access."
+      ),
+      { status: 400 }
+    );
+  }
+
+  if (lower.includes("role") && (lower.includes("not") || lower.includes("invalid"))) {
+    return Object.assign(
+      new Error(
+        "Sanity could not assign the Editor role for this project. Check available roles in sanity.io/manage → Members."
+      ),
+      { status: 400 }
+    );
+  }
+
+  return Object.assign(new Error(message), { status: 400 });
+}
+
+export async function inviteSanityMember(
   token: string,
-  email: string
+  email: string,
+  role: string,
+  availableRoles: SanityRole[]
 ): Promise<SanityInvite> {
+  const allowed = availableRoles.some((entry) => entry.name === role);
+  if (!allowed) {
+    throw formatInviteError(`Role "${role}" is not available on this project.`, availableRoles);
+  }
+
   const created = await sanityAccessFetch<{
     id: string;
     email?: string;
@@ -222,14 +347,14 @@ export async function inviteSanityEditor(
     createdAt?: string;
   }>(token, "/invites", {
     method: "POST",
-    body: JSON.stringify({ email, role: EDITOR_INVITE_ROLE }),
+    body: JSON.stringify({ email, role }),
   });
 
   if (created.ok) {
     return {
       id: created.data.id,
       email: created.data.email ?? email,
-      role: created.data.role ?? EDITOR_INVITE_ROLE,
+      role: created.data.role ?? role,
       status: created.data.status ?? "pending",
       createdAt: created.data.createdAt ?? new Date().toISOString(),
     };
@@ -244,7 +369,7 @@ export async function inviteSanityEditor(
         Accept: "application/json",
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ email, role: EDITOR_INVITE_ROLE }),
+      body: JSON.stringify({ email, role }),
       cache: "no-store",
     }
   );
@@ -258,24 +383,66 @@ export async function inviteSanityEditor(
     return {
       id: body.id ?? email,
       email: body.email ?? email,
-      role: body.role ?? EDITOR_INVITE_ROLE,
+      role: body.role ?? role,
       status: "pending",
       createdAt: new Date().toISOString(),
     };
   }
 
-  const message = created.message || (await readErrorMessage(legacy));
-  const lower = message.toLowerCase();
-  if (lower.includes("role") && (lower.includes("not") || lower.includes("invalid"))) {
-    throw Object.assign(
-      new Error(
-        "Sanity could not assign the Editor role. On the free plan, only Administrator and Viewer exist — upgrade the project to Growth (or invite from sanity.io/manage) so this person can edit without becoming an admin."
-      ),
-      { status: 400 }
-    );
+  throw formatInviteError(
+    created.message || (await readErrorMessage(legacy)),
+    availableRoles
+  );
+}
+
+export async function inviteSanityEditor(
+  token: string,
+  email: string
+): Promise<SanityInvite> {
+  const roles = await listSanityRoles(token);
+  const preferred =
+    roles.find((role) => role.name === EDITOR_INVITE_ROLE) ??
+    roles.find((role) => isWebsiteEditorRole(role.name) && !role.isFullAdmin);
+
+  if (!preferred) {
+    throw formatInviteError("Editor role is not available on this Sanity plan.", roles);
   }
 
-  throw Object.assign(new Error(message), {
-    status: created.status || legacy.status,
-  });
+  return inviteSanityMember(token, email, preferred.name, roles);
+}
+
+export function getSanityManagementToken(): string | undefined {
+  return getManagementToken();
+}
+
+export async function resolveInviteAccessToken(options: {
+  sessionToken?: string | null;
+  adminEmail?: string | null;
+}): Promise<
+  | { ok: true; token: string; via: "session" | "management" }
+  | { ok: false; status: number; message: string }
+> {
+  const managementToken = getManagementToken();
+
+  if (options.sessionToken) {
+    const auth = await requireSanityAdmin(options.sessionToken);
+    if (auth.ok) {
+      return { ok: true, token: options.sessionToken, via: "session" };
+    }
+  }
+
+  if (managementToken && options.adminEmail) {
+    const auth = await requireAdminEmail(options.adminEmail, managementToken);
+    if (auth.ok) {
+      return { ok: true, token: managementToken, via: "management" };
+    }
+    return auth;
+  }
+
+  return {
+    ok: false,
+    status: 401,
+    message:
+      "Could not authorize member invites. Sign in as a Sanity administrator in Studio, and add SANITY_MANAGEMENT_TOKEN on Vercel (sanity.io/manage → API → Tokens → Administrator).",
+  };
 }

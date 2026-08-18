@@ -72,7 +72,7 @@ If the Studio tool is unavailable:
 
 Custom role names `mainAdmin` / `staffEditor` still work if you created them in Sanity. The Studio treats `administrator` / `mainAdmin` as admins and `editor` / `staffEditor` as website editors.
 
-**Plan note:** Sanity’s Editor role is available on **Growth** and above. On the free plan, only Administrator and Viewer exist — upgrade, or invite from Manage after adding the Editor role.
+**Plan note:** Sanity’s **Editor** role is on **Growth** ($15/seat/month) and above. On the **Free** plan, only **Administrator** and **Viewer** exist — there is no Editor option in sanity.io/manage. Upgrade to Growth to invite website editors without full admin access. On Free, you can invite as **Administrator** (they can edit the site but also manage the whole Sanity project) or **Viewer** (read-only, cannot edit).
 
 User management:
 - To remove access: Studio **Invite Editor** list, or **Members** in Sanity.

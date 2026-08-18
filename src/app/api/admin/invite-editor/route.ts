@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { projectId } from "../../../../../sanity/env";
 import {
-  inviteSanityEditor,
+  inviteSanityMember,
   listSanityInvites,
   listSanityMembers,
-  requireSanityAdmin,
+  listSanityRoles,
+  resolveInviteAccessToken,
 } from "@/lib/sanity-access";
 
 export const dynamic = "force-dynamic";
@@ -23,28 +24,39 @@ function errorResponse(message: string, status: number) {
 }
 
 export async function GET(request: NextRequest) {
-  const token = getSessionToken(request);
-  if (!token) {
-    return errorResponse("Sign in to Sanity Studio as an administrator first.", 401);
-  }
-  if (!projectId) {
-    return errorResponse("Sanity is not configured.", 500);
-  }
+  const sessionToken = getSessionToken(request);
+  const adminEmail = request.headers.get("x-sanity-admin-email");
 
-  const auth = await requireSanityAdmin(token);
-  if (!auth.ok) return errorResponse(auth.message, auth.status);
+  const access = await resolveInviteAccessToken({
+    sessionToken,
+    adminEmail,
+  });
+  if (!access.ok) return errorResponse(access.message, access.status);
+  if (!projectId) return errorResponse("Sanity is not configured.", 500);
 
   try {
-    const [members, invites] = await Promise.all([
-      listSanityMembers(token),
-      listSanityInvites(token),
+    const [members, invites, availableRoles] = await Promise.all([
+      listSanityMembers(access.token),
+      listSanityInvites(access.token),
+      listSanityRoles(access.token),
     ]);
+
+    const editorRole = availableRoles.find((role) => role.name === "editor");
+    const websiteEditorRoles = availableRoles.filter((role) => role.canEditWebsite);
+
     return NextResponse.json({
       members,
       invites,
+      availableRoles,
+      canInviteEditor: Boolean(editorRole),
+      planNote: editorRole
+        ? null
+        : "Your Sanity project is on the Free plan. Only Administrator and Viewer are available. Upgrade to Growth ($15/seat/month) to invite Editors who can update the website without full admin access.",
       manageUrl: `https://www.sanity.io/manage/project/${projectId}/members`,
+      pricingUrl: "https://www.sanity.io/pricing",
       studioUrl: "/admin",
       siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.abjatalstar.com",
+      recommendedRoles: websiteEditorRoles.map((role) => role.name),
     });
   } catch (error) {
     const status = (error as { status?: number }).status ?? 500;
@@ -55,21 +67,26 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const token = getSessionToken(request);
-  if (!token) {
-    return errorResponse("Sign in to Sanity Studio as an administrator first.", 401);
-  }
-  if (!projectId) {
-    return errorResponse("Sanity is not configured.", 500);
-  }
-
-  const auth = await requireSanityAdmin(token);
-  if (!auth.ok) return errorResponse(auth.message, auth.status);
+  const sessionToken = getSessionToken(request);
 
   let email = "";
+  let role = "editor";
+  let adminEmail = request.headers.get("x-sanity-admin-email");
+
   try {
-    const body = (await request.json()) as { email?: unknown };
+    const body = (await request.json()) as {
+      email?: unknown;
+      role?: unknown;
+      adminEmail?: unknown;
+    };
     email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+    role =
+      typeof body.role === "string" && body.role.trim()
+        ? body.role.trim().toLowerCase()
+        : "editor";
+    if (typeof body.adminEmail === "string" && body.adminEmail.trim()) {
+      adminEmail = body.adminEmail.trim().toLowerCase();
+    }
   } catch {
     return errorResponse("Invalid request.", 400);
   }
@@ -78,12 +95,30 @@ export async function POST(request: NextRequest) {
     return errorResponse("Enter a valid email address.", 400);
   }
 
+  const access = await resolveInviteAccessToken({
+    sessionToken,
+    adminEmail,
+  });
+  if (!access.ok) return errorResponse(access.message, access.status);
+  if (!projectId) return errorResponse("Sanity is not configured.", 500);
+
   try {
-    const invite = await inviteSanityEditor(token, email);
+    const availableRoles = await listSanityRoles(access.token);
+    const invite = await inviteSanityMember(
+      access.token,
+      email,
+      role,
+      availableRoles
+    );
+
+    const roleTitle =
+      availableRoles.find((entry) => entry.name === invite.role)?.title ??
+      invite.role;
+
     return NextResponse.json({
       success: true,
       invite,
-      message: `Invitation sent to ${email} as Editor. They can update website content at /admin after they accept the Sanity email.`,
+      message: `Invitation sent to ${email} as ${roleTitle}. They can sign in at /admin after accepting the Sanity email.`,
     });
   } catch (error) {
     const status = (error as { status?: number }).status ?? 500;
