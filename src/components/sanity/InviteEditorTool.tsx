@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
-import { useClient } from "sanity";
+import { useClient, useProjectId } from "sanity";
 import { apiVersion } from "../../../sanity/env";
 
 type Member = {
@@ -28,8 +28,26 @@ type TeamResponse = {
   error?: string;
 };
 
+const EDITOR_ROLE = "editor";
+const ACCESS_API_VERSION = "2025-07-11";
+
+function parseTokenValue(raw: string | null): string | undefined {
+  if (!raw) return undefined;
+  try {
+    const parsed = JSON.parse(raw) as { token?: string; accessToken?: string } | string;
+    if (typeof parsed === "string" && parsed.length > 20) return parsed;
+    if (parsed && typeof parsed === "object") {
+      return parsed.token || parsed.accessToken;
+    }
+  } catch {
+    if (raw.length > 20 && !raw.startsWith("{")) return raw;
+  }
+  return undefined;
+}
+
 async function resolveStudioToken(
-  client: ReturnType<typeof useClient>
+  client: ReturnType<typeof useClient>,
+  projectId: string
 ): Promise<string | undefined> {
   const configured = client.config().token as unknown;
   if (typeof configured === "string" && configured) return configured;
@@ -44,28 +62,28 @@ async function resolveStudioToken(
 
   if (typeof window === "undefined") return undefined;
 
+  const preferredKeys = [
+    `__studio_auth_token_${projectId}`,
+    `__sanity_auth_token_${projectId}`,
+    "__studio_auth_token",
+    "__sanity_auth_token",
+  ];
+
   const storages = [window.sessionStorage, window.localStorage];
   try {
     for (const storage of storages) {
+      for (const key of preferredKeys) {
+        const token = parseTokenValue(storage.getItem(key));
+        if (token) return token;
+      }
+
       for (let i = 0; i < storage.length; i += 1) {
         const key = storage.key(i);
         if (!key) continue;
-        const looksLikeToken =
-          key.toLowerCase().includes("sanity") &&
-          (key.toLowerCase().includes("token") ||
-            key.toLowerCase().includes("auth"));
-        if (!looksLikeToken) continue;
-        const raw = storage.getItem(key);
-        if (!raw) continue;
-        try {
-          const parsed = JSON.parse(raw) as { token?: string } | string;
-          if (typeof parsed === "string" && parsed.length > 20) return parsed;
-          if (parsed && typeof parsed === "object" && parsed.token) {
-            return parsed.token;
-          }
-        } catch {
-          if (raw.length > 20 && !raw.startsWith("{")) return raw;
-        }
+        const lower = key.toLowerCase();
+        if (!lower.includes("token") && !lower.includes("auth")) continue;
+        const token = parseTokenValue(storage.getItem(key));
+        if (token) return token;
       }
     }
   } catch {
@@ -88,8 +106,26 @@ function roleLabel(roles: string[]): string {
   return roles[0] ?? "Member";
 }
 
+function requestErrorMessage(error: unknown): string {
+  if (error && typeof error === "object") {
+    const record = error as {
+      message?: string;
+      statusCode?: number;
+      status?: number;
+      response?: { body?: { message?: string; error?: string } };
+    };
+    const fromBody =
+      record.response?.body?.message || record.response?.body?.error;
+    if (fromBody) return fromBody;
+    if (record.message) return record.message;
+  }
+  if (error instanceof Error) return error.message;
+  return "Sanity request failed.";
+}
+
 export default function InviteEditorTool() {
   const client = useClient({ apiVersion });
+  const projectId = useProjectId();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -98,78 +134,202 @@ export default function InviteEditorTool() {
   const [members, setMembers] = useState<Member[]>([]);
   const [invites, setInvites] = useState<Invite[]>([]);
   const [manageUrl, setManageUrl] = useState(
-    "https://www.sanity.io/manage"
+    projectId
+      ? `https://www.sanity.io/manage/project/${projectId}/members`
+      : "https://www.sanity.io/manage"
   );
   const [siteUrl, setSiteUrl] = useState("https://www.abjatalstar.com");
 
-  const loadTeam = useCallback(async () => {
-    const token = await resolveStudioToken(client);
-    if (!token) {
-      setLoading(false);
-      setError(
-        "Could not read your Sanity session. Open this tool while signed in as an administrator, or invite the editor from sanity.io/manage → Members → Invite (role: Editor)."
+  const accessUrl = useCallback(
+    (path: string) =>
+      `https://api.sanity.io/v${ACCESS_API_VERSION}/access/project/${projectId}${path}`,
+    [projectId]
+  );
+
+  const sanityRequest = useCallback(
+    async <T,>(url: string, method: string, body?: unknown): Promise<T> => {
+      return client.request<T>({
+        url,
+        method,
+        body,
+        withCredentials: true,
+        useGlobalApi: true,
+      });
+    },
+    [client]
+  );
+
+  const loadViaSanityClient = useCallback(async (): Promise<boolean> => {
+    const [usersRes, invitesRes] = await Promise.allSettled([
+      sanityRequest<{
+        data?: Array<{
+          sanityUserId: string;
+          profile?: {
+            displayName?: string;
+            email?: string;
+            isCurrentUser?: boolean;
+          };
+          memberships?: Array<{ roleNames?: string[] }>;
+        }>;
+      }>(accessUrl("/users?limit=100"), "GET"),
+      sanityRequest<{
+        data?: Array<{
+          id: string;
+          email?: string;
+          role?: string;
+          status?: string;
+          createdAt?: string;
+        }>;
+      }>(accessUrl("/invites?status=pending&limit=100"), "GET"),
+    ]);
+
+    if (usersRes.status !== "fulfilled") return false;
+
+    setMembers(
+      (usersRes.value.data ?? [])
+        .map((user) => ({
+          id: user.sanityUserId,
+          name: user.profile?.displayName ?? "Unknown",
+          email: user.profile?.email ?? "",
+          roles: user.memberships?.flatMap((m) => m.roleNames ?? []) ?? [],
+          isCurrentUser: Boolean(user.profile?.isCurrentUser),
+        }))
+        .filter((user) => user.email)
+    );
+
+    if (invitesRes.status === "fulfilled") {
+      setInvites(
+        (invitesRes.value.data ?? []).map((invite) => ({
+          id: invite.id,
+          email: invite.email ?? "",
+          role: invite.role ?? EDITOR_ROLE,
+          status: invite.status ?? "pending",
+          createdAt: invite.createdAt ?? "",
+        }))
       );
-      return;
+    } else {
+      setInvites([]);
     }
 
+    return true;
+  }, [accessUrl, sanityRequest]);
+
+  const loadViaApi = useCallback(async (): Promise<boolean> => {
+    const token = await resolveStudioToken(client, projectId);
+    if (!token) return false;
+
+    const response = await fetch("/api/admin/invite-editor", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = (await response.json()) as TeamResponse;
+    if (!response.ok) {
+      throw new Error(data.error ?? "Could not load team members.");
+    }
+    setMembers(data.members ?? []);
+    setInvites(data.invites ?? []);
+    if (data.manageUrl) setManageUrl(data.manageUrl);
+    if (data.siteUrl) setSiteUrl(data.siteUrl);
+    return true;
+  }, [client, projectId]);
+
+  const loadTeam = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch("/api/admin/invite-editor", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = (await response.json()) as TeamResponse;
-      if (!response.ok) {
-        setError(data.error ?? "Could not load team members.");
-        return;
-      }
-      setMembers(data.members ?? []);
-      setInvites(data.invites ?? []);
-      if (data.manageUrl) setManageUrl(data.manageUrl);
-      if (data.siteUrl) setSiteUrl(data.siteUrl);
-    } catch {
-      setError("Network error while loading team members.");
+      if (await loadViaSanityClient()) return;
+      if (await loadViaApi()) return;
+      setError(
+        "Could not load Sanity members from this session. You can still send the invite below, or invite from sanity.io/manage → Members → Invite (role: Editor)."
+      );
+    } catch (loadError) {
+      setError(requestErrorMessage(loadError));
     } finally {
       setLoading(false);
     }
-  }, [client]);
+  }, [loadViaApi, loadViaSanityClient]);
 
   useEffect(() => {
     void loadTeam();
   }, [loadTeam]);
 
+  const inviteViaSanityClient = async (editorEmail: string) => {
+    return sanityRequest<{
+      id?: string;
+      email?: string;
+      role?: string;
+      status?: string;
+    }>(accessUrl("/invites"), "POST", {
+      email: editorEmail,
+      role: EDITOR_ROLE,
+    });
+  };
+
+  const inviteViaLegacyApi = async (editorEmail: string) => {
+    return client.request<{ id?: string; email?: string; role?: string }>({
+      uri: `/invitations/project/${projectId}`,
+      method: "POST",
+      body: { email: editorEmail, role: EDITOR_ROLE },
+      useGlobalApi: true,
+      withCredentials: true,
+    });
+  };
+
+  const inviteViaAppApi = async (editorEmail: string) => {
+    const token = await resolveStudioToken(client, projectId);
+    if (!token) return null;
+    const response = await fetch("/api/admin/invite-editor", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email: editorEmail }),
+    });
+    const data = (await response.json()) as { error?: string; message?: string };
+    if (!response.ok) {
+      throw new Error(data.error ?? "Could not send the invitation.");
+    }
+    return data;
+  };
+
   const handleInvite = async (event: FormEvent) => {
     event.preventDefault();
-    const token = await resolveStudioToken(client);
-    if (!token) {
-      setError(
-        "Could not read your Sanity session. Sign in as an administrator and try again."
-      );
-      return;
-    }
+    const editorEmail = email.trim().toLowerCase();
+    if (!editorEmail) return;
 
     setSending(true);
     setError(null);
     setSuccess(null);
     try {
-      const response = await fetch("/api/admin/invite-editor", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email }),
-      });
-      const data = (await response.json()) as { error?: string; message?: string };
-      if (!response.ok) {
-        setError(data.error ?? "Could not send the invitation.");
-        return;
+      try {
+        await inviteViaSanityClient(editorEmail);
+      } catch (firstError) {
+        const firstMessage = requestErrorMessage(firstError);
+        try {
+          await inviteViaLegacyApi(editorEmail);
+        } catch (secondError) {
+          const apiResult = await inviteViaAppApi(editorEmail);
+          if (!apiResult) {
+            throw new Error(firstMessage || requestErrorMessage(secondError));
+          }
+        }
       }
-      setSuccess(data.message ?? `Invitation sent to ${email}.`);
+
+      setSuccess(
+        `Invitation sent to ${editorEmail} as Editor. They should accept the Sanity email, then sign in at ${siteUrl.replace(/\/$/, "")}/admin.`
+      );
       setEmail("");
       await loadTeam();
-    } catch {
-      setError("Network error while sending the invitation.");
+    } catch (inviteError) {
+      const message = requestErrorMessage(inviteError);
+      const lower = message.toLowerCase();
+      if (lower.includes("role") && (lower.includes("not") || lower.includes("invalid"))) {
+        setError(
+          "Sanity could not assign the Editor role. On the free plan, only Administrator and Viewer exist. Invite from sanity.io/manage, or upgrade the project so Editor is available."
+        );
+      } else {
+        setError(message);
+      }
     } finally {
       setSending(false);
     }
