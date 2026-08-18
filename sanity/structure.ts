@@ -34,3 +34,4 @@ export const structure: StructureResolver = (S) =>
       singleton(S, "aboutPage", "About", InfoOutlineIcon),
       singleton(S, "contactPage", "Contact", EnvelopeIcon),
     ]);
+

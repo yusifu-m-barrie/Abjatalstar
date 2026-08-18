@@ -50,18 +50,32 @@ Quick guide for admins/editors:
 - Update `/admin` → **Contact** and **Site Settings** to update phone/email/address, contact form labels, and business hours
 - Update `/admin` → **Homepage** and **About** for those page contents
 
-### Sanity roles (main admin vs staff editor)
-Sanity Studio login is handled via **Sanity project members**.
+### Sanity roles (administrator vs website editor)
+Sanity Studio login is handled via **Sanity project members**. Website editors are **not** project administrators.
 
-Recommended member setup (in `sanity.io/manage`):
-1. Invite the **Main Admin** (workspace role with full admin permissions).
-2. Invite a **Staff Editor** (workspace permissions for editing content only).
-3. Assign roles in Sanity named:
-   - `mainAdmin` for the Main Admin
-   - `staffEditor` for Staff/Edit users
+#### Invite a website editor (recommended)
+1. Sign in as an **Administrator** at [https://www.abjatalstar.com/admin](https://www.abjatalstar.com/admin).
+2. Open the **Invite Editor** tool in the Studio toolbar.
+3. Enter the person’s email and click **Invite as Editor**.
+4. They receive a Sanity email, accept it, then sign in at `/admin`.
+5. They can update homepage, services, branches, about, contact, and site settings. Changes publish to [https://www.abjatalstar.com](https://www.abjatalstar.com).
+6. They **cannot** manage members, API tokens, or delete documents.
+
+The invite is always sent with Sanity’s built-in **Editor** role — never Administrator.
+
+#### Manual invite (sanity.io/manage)
+If the Studio tool is unavailable:
+1. Open [sanity.io/manage](https://www.sanity.io/manage) → your project → **Members**.
+2. Click **Invite**.
+3. Choose role **Editor** (not Administrator / not Admin).
+4. Tell them to open [https://www.abjatalstar.com/admin](https://www.abjatalstar.com/admin) after they accept.
+
+Custom role names `mainAdmin` / `staffEditor` still work if you created them in Sanity. The Studio treats `administrator` / `mainAdmin` as admins and `editor` / `staffEditor` as website editors.
+
+**Plan note:** Sanity’s Editor role is available on **Growth** and above. On the free plan, only Administrator and Viewer exist — upgrade, or invite from Manage after adding the Editor role.
 
 User management:
-- To remove access: go to **Members** in Sanity and remove the user.
+- To remove access: Studio **Invite Editor** list, or **Members** in Sanity.
 
 Password note:
 - Do not share passwords manually.
@@ -79,8 +93,8 @@ Sanity is used only for **website content** and **staff email record storage** (
 
 | Page | URL |
 |------|-----|
-| Staff mail login (branded gateway) | https://www.abjatalstar.com/mail |
-| Webmail redirect | https://abjatalstar.com/webmail → HostGator |
+| Staff mail login (branded URL → HostGator webmail) | https://www.abjatalstar.com/mail |
+| Webmail redirect (alias) | https://abjatalstar.com/webmail → HostGator |
 | Email admin dashboard | https://www.abjatalstar.com/admin/email-accounts |
 
 ### What is stored vs not stored
@@ -95,11 +109,12 @@ Sanity is used only for **website content** and **staff email record storage** (
 
 ### Staff login flow (`/mail`)
 
-1. Staff opens `/mail` — a **secure branded gateway** to staff webmail.
-2. They enter `@abjatalstar.com` email + mailbox password.
-3. The page validates input, shows a loading state, clears the password from memory, and redirects to `/webmail`.
-4. `/webmail` redirects to HostGator webmail (`WEBMAIL_DESTINATION_URL`, e.g. `https://abjatalstar.com:2096`).
-5. Staff complete sign-in on HostGator. **Passwords are never stored, logged, or saved** by this site.
+1. Staff open **`/mail`** (or `/webmail`) — a branded AbjatalStar URL on your website.
+2. They are redirected immediately to **HostGator webmail** (`WEBMAIL_DESTINATION_URL`, e.g. `https://mail.abjatalstar.com:2096`).
+3. Staff sign in **once** on HostGator with their `@abjatalstar.com` email and mailbox password.
+4. Optional: share `https://www.abjatalstar.com/mail?email=name@abjatalstar.com` to prefill the email field on the HostGator login page.
+
+**Webmail page branding:** The orange “Webmail” title on the HostGator login screen is controlled by **cPanel on the server**, not this Next.js app. On shared HostGator hosting you typically need to ask HostGator support to replace `webmail-logo.svg` in the cPanel login theme (WHM-level change) if you want “Abjatal Webmail” instead of the default logo.
 
 ### Admin roles (`/admin/email-accounts`)
 
@@ -138,10 +153,11 @@ When `CPANEL_HOST`, `CPANEL_USERNAME`, and `CPANEL_API_TOKEN` are set server-sid
 | `MAIL_SUPER_ADMIN_EMAIL` / `MAIL_SUPER_ADMIN_PASSWORD` | Super Admin login |
 | `MAIL_ADMIN_EMAIL` / `MAIL_ADMIN_PASSWORD` | Admin login |
 | `MAIL_EDITOR_EMAIL` / `MAIL_EDITOR_PASSWORD` | Staff/Editor read-only login |
-| `CPANEL_HOST`, `CPANEL_USERNAME`, `CPANEL_API_TOKEN` | **Server-only** HostGator API (never exposed to browser) |
-| `NEXT_PUBLIC_WEBMAIL_URL` | Branded gateway, e.g. `https://abjatalstar.com/webmail` |
-| `WEBMAIL_DESTINATION_URL` | HostGator webmail URL, e.g. `https://abjatalstar.com:2096` |
-| `NEXT_PUBLIC_WEBMAIL_DIRECT_URL` | Direct webmail button on `/mail` |
+| `CPANEL_HOST` | **Server-only** HostGator server host, e.g. `mail.abjatalstar.com` (not the Vercel website domain) |
+| `CPANEL_USERNAME`, `CPANEL_API_TOKEN` | **Server-only** cPanel API credentials |
+| `WEBMAIL_DESTINATION_URL` | HostGator webmail URL, e.g. `https://mail.abjatalstar.com:2096` |
+| `NEXT_PUBLIC_WEBMAIL_URL` | Branded staff entry URL, e.g. `https://abjatalstar.com/mail` |
+| `NEXT_PUBLIC_WEBMAIL_DIRECT_URL` | Direct HostGator webmail URL (optional public link) |
 | `NEXT_PUBLIC_BRAND_NAME` | `AbjatalStar` |
 | `NEXT_PUBLIC_MAIL_DOMAIN` | `abjatalstar.com` |
 | `SANITY_API_TOKEN` | Persists staff records + activity logs in production |

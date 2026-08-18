@@ -1,8 +1,20 @@
+import { UsersIcon } from "@sanity/icons";
 import { defineConfig } from "sanity";
 import { structureTool } from "sanity/structure";
+import InviteEditorTool from "./src/components/sanity/InviteEditorTool";
 import { apiVersion, dataset, projectId } from "./sanity/env";
+import {
+  isSanityAdmin,
+  isStaffEditor,
+  WEBSITE_DOC_TYPE_SET,
+} from "./sanity/roles";
 import { schemaTypes } from "./sanity/schemaTypes";
 import { structure } from "./sanity/structure";
+
+const HIDDEN_CREATE_TYPES = new Set([
+  "staffEmailAccount",
+  "staffEmailActivityLog",
+]);
 
 export default defineConfig({
   name: "abjatal-star",
@@ -14,46 +26,43 @@ export default defineConfig({
   plugins: [
     structureTool({ structure }),
   ],
+  tools: (prev, { currentUser }) => {
+    if (!isSanityAdmin(currentUser)) return prev;
+    return [
+      ...prev,
+      {
+        name: "invite-editor",
+        title: "Invite Editor",
+        icon: UsersIcon,
+        component: InviteEditorTool,
+      },
+    ];
+  },
   // Role-based Studio experience:
-  // - Main Admin: full access (content + Studio features)
-  // - Staff Editor: can edit website content, but cannot delete/archive and cannot touch project/schema settings.
+  // - Administrator: full access + Invite Editor tool
+  // - Editor: website content only (no delete, no member management)
   document: {
+    newDocumentOptions: (prev, { currentUser }) => {
+      if (isStaffEditor(currentUser)) return [];
+      return prev.filter((template) => !HIDDEN_CREATE_TYPES.has(template.templateId));
+    },
     actions: (prev, context) => {
-      const roles = context.currentUser?.roles ?? [];
-      const isMainAdmin = roles.some(
-        (r) => r.name === "mainAdmin" || r.name === "administrator"
-      );
-      const isStaffEditor =
-        !isMainAdmin &&
-        roles.some((r) => r.name === "staffEditor" || r.name === "editor");
-
-      if (!isStaffEditor) return prev;
-
-      const websiteDocTypes = new Set([
-        "siteSettings",
-        "homePage",
-        "servicesPage",
-        "branchesPage",
-        "agentsPage",
-        "aboutPage",
-        "contactPage",
-      ]);
+      if (!isStaffEditor(context.currentUser)) return prev;
 
       const schemaTypeName =
         typeof context.schemaType === "string"
           ? context.schemaType
-          : // Sanity passes schemaType as an object in some versions
-            (context.schemaType as any)?.name;
+          : (context.schemaType as { name?: string } | undefined)?.name;
 
-      // Staff should only manage our website singleton documents.
-      if (schemaTypeName && !websiteDocTypes.has(schemaTypeName)) return [];
+      if (schemaTypeName && !WEBSITE_DOC_TYPE_SET.has(schemaTypeName)) {
+        return [];
+      }
 
-      // Allow editing + publishing, but block destructive actions.
       const forbiddenActions = new Set([
         "delete",
         "archive",
         "unpublish",
-        "discardChanges",
+        "duplicate",
       ]);
 
       return prev.filter((action) => {

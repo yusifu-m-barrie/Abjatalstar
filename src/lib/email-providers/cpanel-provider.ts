@@ -51,7 +51,7 @@ export class CpanelEmailProvider implements EmailProvider {
 
       return {
         success: true,
-        message: `${input.email} was created in HostGator. Share the password with the staff member for login at /mail.`,
+        message: `${input.email} was created in HostGator. Share the password with the staff member — they sign in at /mail (HostGator webmail).`,
       };
     } catch (error) {
       return {

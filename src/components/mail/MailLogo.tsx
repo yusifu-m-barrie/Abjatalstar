@@ -6,6 +6,8 @@ import { mailConfig } from "@/lib/mail-config";
 
 interface MailLogoProps {
   size?: "sm" | "md" | "lg";
+  /** Override default logo path (e.g. from Sanity site settings). */
+  src?: string;
 }
 
 const sizes = {
@@ -14,10 +16,11 @@ const sizes = {
   lg: "h-16 w-auto max-w-[260px]",
 };
 
-export default function MailLogo({ size = "md" }: MailLogoProps) {
-  const hasLogo = Boolean(mailConfig.logoPath);
+export default function MailLogo({ size = "md", src }: MailLogoProps) {
+  const logoPath = src ?? mailConfig.logoPath;
+  const hasLogo = Boolean(logoPath);
   const [useText, setUseText] = useState(!hasLogo);
-  const [src, setSrc] = useState(mailConfig.logoPath ?? "");
+  const [activeSrc, setActiveSrc] = useState(logoPath ?? "");
 
   if (useText) {
     return (
@@ -32,15 +35,15 @@ export default function MailLogo({ size = "md" }: MailLogoProps) {
   return (
     <div className="flex justify-center">
       <Image
-        src={src}
+        src={activeSrc}
         alt={`${mailConfig.brandName} logo`}
         width={280}
         height={120}
         unoptimized
         className={`object-contain ${sizes[size]}`}
         onError={() => {
-          if (src === mailConfig.logoPath && mailConfig.fallbackLogoPath) {
-            setSrc(mailConfig.fallbackLogoPath);
+          if (activeSrc === logoPath && mailConfig.fallbackLogoPath) {
+            setActiveSrc(mailConfig.fallbackLogoPath);
           } else {
             setUseText(true);
           }

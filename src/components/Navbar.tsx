@@ -9,6 +9,7 @@ import { NAV_LINKS } from "@/data/navigation";
 import { cn } from "@/lib/utils";
 import Logo from "./Logo";
 import { useBusiness } from "@/context/SiteSettingsContext";
+import { mailConfig } from "@/lib/mail-config";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -44,12 +45,25 @@ export default function Navbar() {
             <span className="text-white/40">|</span>
             <span className="text-white/80">{business.tagline}</span>
           </div>
-          <Link
-            href="/contact"
-            className="font-medium text-brand-orange-light transition-opacity hover:opacity-80"
-          >
-            Get in Touch →
-          </Link>
+          <div className="flex items-center gap-4">
+            <a
+              href={mailConfig.webmailDirectUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-brand-orange-light transition-opacity hover:opacity-80"
+            >
+              Webmail
+            </a>
+            <span className="text-white/40">|</span>
+            <a
+              href={mailConfig.mailAdminLoginUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-brand-orange-light transition-opacity hover:opacity-80"
+            >
+              Admin WebMail
+            </a>
+          </div>
         </div>
       </div>
 
@@ -88,12 +102,14 @@ export default function Navbar() {
             >
               Find a Branch
             </Link>
-            <Link
-              href="/contact"
+            <a
+              href={mailConfig.sanityAdminUrl}
+              target="_blank"
+              rel="noopener noreferrer"
               className="rounded-xl bg-brand-green px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-brand-green-light hover:shadow-lg hover:shadow-brand-green/25"
             >
-              Contact Us
-            </Link>
+              Admin Login
+            </a>
           </div>
 
           <button
@@ -138,6 +154,24 @@ export default function Navbar() {
                   </motion.div>
                 ))}
                 <div className="flex flex-col gap-2 pt-4">
+                  <a
+                    href={mailConfig.webmailDirectUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setIsOpen(false)}
+                    className="rounded-xl border border-brand-green py-3 text-center text-sm font-semibold text-brand-green"
+                  >
+                    Webmail
+                  </a>
+                  <a
+                    href={mailConfig.mailAdminLoginUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setIsOpen(false)}
+                    className="rounded-xl border border-brand-blue py-3 text-center text-sm font-semibold text-brand-blue"
+                  >
+                    Admin WebMail
+                  </a>
                   <Link
                     href="/branches"
                     onClick={() => setIsOpen(false)}
@@ -145,13 +179,15 @@ export default function Navbar() {
                   >
                     Find a Branch
                   </Link>
-                  <Link
-                    href="/contact"
+                  <a
+                    href={mailConfig.sanityAdminUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     onClick={() => setIsOpen(false)}
                     className="rounded-xl bg-brand-green py-3 text-center text-sm font-semibold text-white"
                   >
-                    Contact Us
-                  </Link>
+                    Admin Login
+                  </a>
                 </div>
               </div>
             </motion.div>

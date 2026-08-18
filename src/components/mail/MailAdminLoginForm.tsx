@@ -1,12 +1,16 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { Loader2, Lock, Mail, Shield } from "lucide-react";
+import { Loader2, Lock, Mail } from "lucide-react";
 import { useRouter } from "next/navigation";
 import MailLogo from "@/components/mail/MailLogo";
 import { mailConfig } from "@/lib/mail-config";
 
-export default function MailAdminLoginForm() {
+type MailAdminLoginFormProps = {
+  logoSrc?: string;
+};
+
+export default function MailAdminLoginForm({ logoSrc }: MailAdminLoginFormProps) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -38,26 +42,17 @@ export default function MailAdminLoginForm() {
   };
 
   return (
-    <div className="w-full max-w-md rounded-2xl border border-border bg-white p-8 card-shadow">
-      <div className="mb-6">
-        <MailLogo size="md" />
+    <div className="w-full max-w-md rounded-2xl border border-border bg-white p-8 card-shadow sm:p-10">
+      <div className="mb-8">
+        <MailLogo size="lg" src={logoSrc} />
       </div>
       <div className="mb-6 text-center">
-        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-brand-blue/10">
-          <Shield className="h-6 w-6 text-brand-blue" />
-        </div>
         <h1 className="text-xl font-bold text-brand-blue">Email Admin Access</h1>
         <p className="mt-1 text-sm text-muted">
           Manage {mailConfig.brandName} staff mailbox records
         </p>
         <p className="mt-2 text-xs text-muted">
           Separate from Sanity CMS. Sign in with your mail admin email and password.
-        </p>
-        <p className="mt-2 rounded-xl bg-section-alt px-3 py-2 text-left text-xs text-muted">
-          <strong className="text-brand-blue">Accounts:</strong> Super Admin{" "}
-          <code className="text-[11px]">super@abjatalstar.com</code> · Admin{" "}
-          <code className="text-[11px]">admin@abjatalstar.com</code> · Editor{" "}
-          <code className="text-[11px]">editor@abjatalstar.com</code>
         </p>
       </div>
 

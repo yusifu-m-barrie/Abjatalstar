@@ -50,7 +50,7 @@ export async function cpanelUapi<T = unknown>(
   } catch (error) {
     const detail = error instanceof Error ? error.message : "Unknown network error.";
     throw new Error(
-      `Could not reach HostGator cPanel API at https://${host}:2083. Check CPANEL_HOST, firewall/port 2083 access, and cPanel API token. (${detail})`
+      `Could not reach HostGator cPanel API at https://${host}:2083. Use CPANEL_HOST=mail.${process.env.NEXT_PUBLIC_MAIL_DOMAIN ?? "yourdomain.com"} (not the Vercel website domain). (${detail})`
     );
   }
 

@@ -671,7 +671,7 @@ export default function EmailAccountsDashboard() {
                     label="Mailbox password"
                     value={form.password}
                     onChange={(v) => setForm({ ...form, password: v })}
-                    placeholder="Password staff will use at /mail"
+                    placeholder="Password staff will use on HostGator webmail"
                   />
                   <PasswordField
                     label="Confirm password"
